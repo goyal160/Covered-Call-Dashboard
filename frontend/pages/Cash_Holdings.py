@@ -414,9 +414,3 @@ else:
         )
 
 st.divider()
-
-st.caption(
-
-    "Phase-3 : Edit/Delete functionality will appear below in the next step."
-
-)

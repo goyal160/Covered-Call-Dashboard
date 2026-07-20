@@ -103,10 +103,15 @@ def portfolio_summary(cash_df, call_df):
     # TOTALS
     # =====================================================
 
-    summary["charges"] = (
-        cash_charges +
-        option_charges
-    )
+    # =====================================================
+# TOTALS
+# =====================================================
+
+# Cash holding charges have already been adjusted
+# in equity_gain. Hence only option charges are
+# deducted separately.
+
+    summary["charges"] = option_charges
 
     summary["overall_pl"] = (
 
@@ -118,7 +123,7 @@ def portfolio_summary(cash_df, call_df):
 
         -
 
-        summary["charges"]
+        option_charges
 
     )
 
@@ -194,6 +199,10 @@ def cash_holding_summary(cash_df):
     summary["gain_loss"] = (
 
         cash_df["gain_loss"]
+
+    ).sum() - (
+
+        cash_df["charges"]
 
     ).sum()
 
