@@ -30,7 +30,9 @@ def portfolio_summary(cash_df, call_df):
 
         equity_gain = (
             cash_df["gain_loss"]
-        ).sum()
+        ).sum() - (
+            cash_df["charges"].sum()
+        )
 
         cash_charges = (
             cash_df["charges"]
