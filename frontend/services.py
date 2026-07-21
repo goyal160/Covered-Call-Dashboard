@@ -1,70 +1,176 @@
 import pandas as pd
 
 
+# =====================================================
+# DASHBOARD SUMMARY
+# =====================================================
+
+def dashboard_summary(cash_df, calls_df):
+    """
+    Dashboard KPIs not included in portfolio_summary().
+    """
+
+    summary = {
+        "total_holdings": 0,
+        "open_calls": 0,
+        "closed_calls": 0,
+        "premium_collected": 0.0,
+        "total_charges": 0.0,
+    }
+
+    if cash_df is not None and not cash_df.empty:
+
+        summary["total_holdings"] = len(cash_df)
+
+        if "charges" in cash_df.columns:
+
+            summary["total_charges"] += (
+                cash_df["charges"]
+                .fillna(0)
+                .sum()
+            )
+
+    if calls_df is not None and not calls_df.empty:
+
+        if "status" in calls_df.columns:
+
+            open_df = calls_df[
+                calls_df["status"] == "OPEN"
+            ]
+
+            closed_df = calls_df[
+                calls_df["status"] == "CLOSED"
+            ]
+
+            summary["open_calls"] = len(open_df)
+
+            summary["closed_calls"] = len(closed_df)
+
+            if (
+                "sell_average" in open_df.columns
+                and
+                "quantity" in open_df.columns
+            ):
+
+                summary["premium_collected"] = (
+
+                    open_df["sell_average"]
+
+                    *
+
+                    open_df["quantity"]
+
+                ).sum()
+
+        if "charges" in calls_df.columns:
+
+            summary["total_charges"] += (
+
+                calls_df["charges"]
+
+                .fillna(0)
+
+                .sum()
+
+            )
+
+    return summary
+
+
+# =====================================================
+# PORTFOLIO SUMMARY
+# =====================================================
+
 def portfolio_summary(cash_df, call_df):
 
     summary = {}
 
-    # =====================================================
-    # CASH HOLDINGS
-    # =====================================================
+    investment = 0
+    current_value = 0
+    equity_gain = 0
+    cash_charges = 0
 
-    if cash_df.empty:
-
-        investment = 0
-        current_value = 0
-        equity_gain = 0
-        cash_charges = 0
-
-    else:
+    if cash_df is not None and not cash_df.empty:
 
         investment = (
-            cash_df["buy_average"] *
+
+            cash_df["buy_average"]
+
+            *
+
             cash_df["quantity"]
+
         ).sum()
 
         current_value = (
-            cash_df["current_price"] *
+
+            cash_df["current_price"]
+
+            *
+
             cash_df["quantity"]
+
         ).sum()
 
         equity_gain = (
+
             cash_df["gain_loss"]
-        ).sum() - (
-            cash_df["charges"].sum()
+
+            .fillna(0)
+
+            .sum()
+
+            -
+
+            cash_df["charges"]
+
+            .fillna(0)
+
+            .sum()
+
         )
 
         cash_charges = (
+
             cash_df["charges"]
-        ).sum()
+
+            .fillna(0)
+
+            .sum()
+
+        )
 
     summary["investment"] = investment
     summary["current_value"] = current_value
     summary["equity_gain"] = equity_gain
     summary["cash_charges"] = cash_charges
 
-    # =====================================================
-    # COVERED CALLS
-    # =====================================================
-
     option_profit = 0
     option_charges = 0
 
-    if not call_df.empty:
+    if call_df is not None and not call_df.empty:
 
-        if "option_profit" in call_df.columns:
+        if "net_profit" in call_df.columns:
 
             option_profit = (
-                call_df["option_profit"]
-            ).fillna(0).sum()
 
-        elif (
-            "sell_average" in call_df.columns
-            and
-            "buy_average" in call_df.columns
-            and
-            "quantity" in call_df.columns
-        ):
+                call_df["net_profit"]
+
+                .fillna(0)
+
+                .sum()
+
+            )
+
+        elif {
+
+            "sell_average",
+
+            "buy_average",
+
+            "quantity",
+
+        }.issubset(call_df.columns):
 
             closed = call_df.copy()
 
@@ -74,42 +180,38 @@ def portfolio_summary(cash_df, call_df):
                     closed["status"] == "CLOSED"
                 ]
 
-            if not closed.empty:
+            option_profit = (
 
-                option_profit = (
+                (
 
-                    (
-                        closed["sell_average"]
-                        -
-                        closed["buy_average"].fillna(0)
-                    )
+                    closed["sell_average"]
 
-                    *
+                    -
 
-                    closed["quantity"]
+                    closed["buy_average"]
 
-                ).sum()
+                )
+
+                *
+
+                closed["quantity"]
+
+            ).sum()
 
         if "charges" in call_df.columns:
 
             option_charges = (
+
                 call_df["charges"]
-            ).fillna(0).sum()
+
+                .fillna(0)
+
+                .sum()
+
+            )
 
     summary["option_profit"] = option_profit
     summary["option_charges"] = option_charges
-
-    # =====================================================
-    # TOTALS
-    # =====================================================
-
-    # =====================================================
-# TOTALS
-# =====================================================
-
-# Cash holding charges have already been adjusted
-# in equity_gain. Hence only option charges are
-# deducted separately.
 
     summary["charges"] = option_charges
 
@@ -127,23 +229,15 @@ def portfolio_summary(cash_df, call_df):
 
     )
 
-    if investment == 0:
+    summary["roi"] = (
 
-        summary["roi"] = 0
+        round(
 
-    else:
+            summary["overall_pl"]
 
-        summary["roi"] = round(
+            /
 
-            (
-
-                summary["overall_pl"]
-
-                /
-
-                investment
-
-            )
+            investment
 
             *
 
@@ -153,8 +247,18 @@ def portfolio_summary(cash_df, call_df):
 
         )
 
+        if investment
+
+        else 0
+
+    )
+
     return summary
 
+
+# =====================================================
+# CASH HOLDINGS SUMMARY
+# =====================================================
 
 def cash_holding_summary(cash_df):
 
@@ -170,7 +274,7 @@ def cash_holding_summary(cash_df):
 
     }
 
-    if cash_df.empty:
+    if cash_df is None or cash_df.empty:
 
         return summary
 
@@ -200,10 +304,18 @@ def cash_holding_summary(cash_df):
 
         cash_df["gain_loss"]
 
-    ).sum() - (
+        .fillna(0)
+
+        .sum()
+
+        -
 
         cash_df["charges"]
 
-    ).sum()
+        .fillna(0)
+
+        .sum()
+
+    )
 
     return summary

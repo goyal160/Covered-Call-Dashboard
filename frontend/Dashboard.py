@@ -1,15 +1,38 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 from datetime import datetime, timedelta
+from components.sidebar import render_sidebar
+from components.login import render_login
+
+from components.kpi_cards import (
+    portfolio_summary_cards,
+    option_summary_cards,
+    charges_cards,
+)
+
+from components.charts import (
+    portfolio_allocation_chart,
+)
 
 from api import (
+    is_logged_in,
     get_cash_holdings,
     get_covered_calls,
 )
 
-from services import portfolio_summary
+from components.tables import (
+    cash_holdings_table,
+    open_calls_table,
+    recent_activity_table,
+    closed_calls_table,
+)
 
+from components.navigation import quick_navigation, section_header
+
+from services import (
+    portfolio_summary,
+    dashboard_summary,
+)
 
 # =====================================================
 # PAGE CONFIGURATION
@@ -21,10 +44,19 @@ st.set_page_config(
     layout="wide",
 )
 
+if not is_logged_in():
+
+    render_login()
+
+    st.stop()
+
+render_sidebar(
+    st.session_state["username"]
+)
+
 st.title("📈 Covered Call Portfolio Dashboard")
 
 st.markdown("---")
-
 
 # =====================================================
 # LOAD DATA
@@ -60,220 +92,30 @@ summary = portfolio_summary(
 # ADDITIONAL KPI CALCULATIONS
 # =====================================================
 
-total_holdings = len(cash)
-
-open_calls = 0
-
-closed_calls = 0
-
-premium_collected = 0
-
-total_charges = 0
-
-if not calls.empty:
-
-    if "status" in calls.columns:
-
-        open_calls = len(
-            calls[
-                calls["status"] == "OPEN"
-            ]
-        )
-
-        closed_calls = len(
-            calls[
-                calls["status"] == "CLOSED"
-            ]
-        )
-
-    if (
-        "sell_average" in calls.columns
-        and
-        "quantity" in calls.columns
-    ):
-
-        premium_collected = (
-            calls.loc[
-            calls["status"] == "OPEN",
-            "sell_average"
-            ]
-            *
-            calls.loc[
-                calls["status"] == "OPEN",
-                "quantity"
-            ]
-        ).sum()
-
-    if "charges" in calls.columns:
-
-        total_charges += calls[
-            "charges"
-        ].sum()
-
-if (
-    not cash.empty
-    and
-    "charges" in cash.columns
-):
-
-    total_charges += cash[
-        "charges"
-    ].sum()
-
-
-# =====================================================
-# KPI ROW - 1
-# =====================================================
-
-k1, k2, k3, k4 = st.columns(4)
-
-k1.metric(
-
-    "Investment",
-
-    f"₹ {summary['investment']:,.2f}"
-
+dashboard = dashboard_summary(
+    cash,
+    calls,
 )
 
-k2.metric(
+portfolio_summary_cards(summary)
 
-    "Current Value",
-
-    f"₹ {summary['current_value']:,.2f}"
-
+option_summary_cards(
+    summary["option_profit"],
+    dashboard["open_calls"],
+    dashboard["closed_calls"],
+    dashboard["total_holdings"],
 )
 
-k3.metric(
-
-    "Equity Gain",
-
-    f"₹ {summary['equity_gain']:,.2f}"
-
+charges_cards(
+    dashboard["premium_collected"],
+    dashboard["total_charges"],
 )
-
-k4.metric(
-
-    "ROI",
-
-    f"{summary['roi']:.2f}%"
-
-)
-
-
-# =====================================================
-# KPI ROW - 2
-# =====================================================
-
-k5, k6, k7, k8 = st.columns(4)
-
-k5.metric(
-
-    "Option Profit",
-
-    f"₹ {summary['option_profit']:,.2f}"
-
-)
-
-k6.metric(
-
-    "Open Calls",
-
-    open_calls
-
-)
-
-k7.metric(
-
-    "Closed Calls",
-
-    closed_calls
-
-)
-
-k8.metric(
-
-    "Holdings",
-
-    total_holdings
-
-)
-
-
-# =====================================================
-# KPI ROW - 3
-# =====================================================
-
-k9, k10 = st.columns(2)
-
-k9.metric(
-
-    "Premium Collected",
-
-    f"₹ {premium_collected:,.2f}"
-
-)
-
-k10.metric(
-
-    "Total Charges",
-
-    f"₹ {total_charges:,.2f}"
-
-)
-
-
-st.divider()
 
 # =====================================================
 # PORTFOLIO ALLOCATION
 # =====================================================
 
-st.subheader("📊 Portfolio Allocation")
-
-if cash.empty:
-
-    st.info("No Cash Holdings Available.")
-
-else:
-
-    allocation = cash.copy()
-
-    allocation["Holding Value"] = (
-        allocation["current_price"]
-        *
-        allocation["quantity"]
-    )
-
-    fig = px.pie(
-
-        allocation,
-
-        names="script_name",
-
-        values="Holding Value",
-
-        hole=0.45,
-
-        title="Portfolio Allocation"
-
-    )
-
-    fig.update_traces(
-
-        textposition="inside",
-
-        textinfo="percent+label"
-
-    )
-
-    st.plotly_chart(
-
-        fig,
-
-        width="stretch"
-
-    )
-
+portfolio_allocation_chart(cash)
 
 st.divider()
 
@@ -350,23 +192,12 @@ st.divider()
 # CASH HOLDINGS
 # =====================================================
 
-left, right = st.columns([8, 1])
-
-with left:
-
-    st.subheader("💰 Cash Holdings")
-
-with right:
-
-    st.page_link(
-
-        "pages/Cash_Holdings.py",
-
-        label="➕ Add",
-
-        icon="➕",
-
-    )
+section_header(
+    "💰 Cash Holdings",
+    "pages/Cash_Holdings.py",
+    "➕ Add",
+    "➕",
+)
 
 if cash.empty:
 
@@ -378,81 +209,7 @@ if cash.empty:
 
 else:
 
-    holdings = cash.copy()
-
-    holdings["Investment"] = (
-
-        holdings["buy_average"]
-
-        *
-
-        holdings["quantity"]
-
-    )
-
-    holdings["Current Value"] = (
-
-        holdings["current_price"]
-
-        *
-
-        holdings["quantity"]
-
-    )
-
-    holdings = holdings[
-
-        [
-
-            "script_name",
-
-            "buy_average",
-
-            "current_price",
-
-            "quantity",
-
-            "Investment",
-
-            "Current Value",
-
-            "gain_loss",
-
-            "charges",
-
-        ]
-
-    ]
-
-    holdings.columns = [
-
-        "Script",
-
-        "Buy Avg",
-
-        "Current Price",
-
-        "Qty",
-
-        "Investment",
-
-        "Current Value",
-
-        "Gain/Loss",
-
-        "Charges",
-
-    ]
-
-    st.dataframe(
-
-        holdings,
-
-        hide_index=True,
-
-        width="stretch",
-
-    )
+    cash_holdings_table(cash)
 
 
 st.divider()
@@ -462,39 +219,7 @@ st.divider()
 # QUICK NAVIGATION
 # =====================================================
 
-st.subheader("⚡ Quick Navigation")
-
-c1, c2, c3 = st.columns(3)
-
-with c1:
-
-    st.page_link(
-
-        "pages/Cash_Holdings.py",
-
-        label="💰 Cash Holdings",
-
-        icon="💰",
-
-    )
-
-with c2:
-
-    st.page_link(
-
-        "pages/Covered_Calls.py",
-
-        label="📞 Covered Calls",
-
-        icon="📞",
-
-    )
-
-with c3:
-    st.markdown(
-        "[⚙ Django Admin](http://127.0.0.1:8000/admin/)"
-    )
-
+quick_navigation()
 
 st.divider()
 
@@ -502,17 +227,12 @@ st.divider()
 # OPEN COVERED CALLS
 # =====================================================
 
-left, right = st.columns([8, 1])
-
-with left:
-    st.subheader("📞 Open Covered Calls")
-
-with right:
-    st.page_link(
-        "pages/Covered_Calls.py",
-        label="Manage",
-        icon="📞",
-    )
+section_header(
+    "📞 Open Covered Calls",
+    "pages/Covered_Calls.py",
+    "Manage",
+    "📞",
+)
 
 if calls.empty:
 
@@ -533,42 +253,7 @@ else:
 
     else:
 
-        display = open_calls_df.copy()
-
-        columns = [
-            "trade_date",
-            "script_name",
-            "strike",
-            "sell_average",
-            "quantity",
-            "option_profit",
-            "status",
-        ]
-
-        display = display[
-            [c for c in columns if c in display.columns]
-        ]
-
-        rename = {
-            "trade_date": "Trade Date",
-            "script_name": "Script",
-            "strike": "Strike",
-            "sell_average": "Sell Avg",
-            "quantity": "Qty",
-            "option_profit": "Option P/L",
-            "status": "Status",
-        }
-
-        display.rename(
-            columns=rename,
-            inplace=True
-        )
-
-        st.dataframe(
-            display,
-            width="stretch",
-            hide_index=True,
-        )
+        open_calls_table(open_calls_df)
 
 st.divider()
 
@@ -593,38 +278,7 @@ else:
             ascending=False,
         )
 
-    recent = recent.head(5)
-
-    cols = [
-        "trade_date",
-        "script_name",
-        "strike",
-        "sell_average",
-        "quantity",
-        "status",
-    ]
-
-    recent = recent[
-        [c for c in cols if c in recent.columns]
-    ]
-
-    recent.rename(
-        columns={
-            "trade_date": "Trade Date",
-            "script_name": "Script",
-            "strike": "Strike",
-            "sell_average": "Premium",
-            "quantity": "Qty",
-            "status": "Status",
-        },
-        inplace=True,
-    )
-
-    st.dataframe(
-        recent,
-        width="stretch",
-        hide_index=True,
-    )
+    recent_activity_table(recent)
 
 st.divider()
 
@@ -736,40 +390,7 @@ else:
 
     else:
 
-        cols = [
-            "trade_date",
-            "script_name",
-            "strike",
-            "sell_average",
-            "buy_average",
-            "quantity",
-            "option_profit",
-            "close_date",
-        ]
-
-        closed = closed[
-            [c for c in cols if c in closed.columns]
-        ]
-
-        closed.rename(
-            columns={
-                "trade_date": "Trade Date",
-                "script_name": "Script",
-                "strike": "Strike",
-                "sell_average": "Sell Avg",
-                "buy_average": "Buy Avg",
-                "quantity": "Qty",
-                "option_profit": "Net Profit",
-                "close_date": "Close Date",
-            },
-            inplace=True,
-        )
-
-        st.dataframe(
-            closed,
-            width="stretch",
-            hide_index=True,
-        )
+        closed_calls_table(closed)
 
 st.divider()
 
