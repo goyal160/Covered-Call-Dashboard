@@ -1,7 +1,5 @@
 import streamlit as st
-
 from utils import money, percent
-
 
 # =====================================================
 # GENERIC KPI CARD
@@ -12,21 +10,30 @@ def metric(
     value,
     delta=None,
 ):
+    """
+    Wrapper around Streamlit metric.
+    Keeps all KPI cards consistent.
+    """
 
     st.metric(
         label=title,
         value=value,
         delta=delta,
+        border=True,
     )
 
 
 # =====================================================
-# PORTFOLIO SUMMARY KPIs
+# DASHBOARD KPI CARD
 # =====================================================
 
-def portfolio_summary_cards(summary):
+def dashboard_kpi_cards(summary, dashboard):
 
-    c1, c2, c3, c4 = st.columns(4)
+    # ----------------------------
+    # Row 1
+    # ----------------------------
+
+    c1, c2 = st.columns(2)
 
     with c1:
         metric(
@@ -40,80 +47,56 @@ def portfolio_summary_cards(summary):
             money(summary["current_value"]),
         )
 
-    with c3:
-        metric(
-            "Equity Gain",
-            money(summary["equity_gain"]),
-        )
-
-    with c4:
-        metric(
-            "ROI",
-            percent(summary["roi"]),
-        )
-
-
-# =====================================================
-# OPTION SUMMARY KPIs
-# =====================================================
-
-def option_summary_cards(
-
-    option_profit,
-    open_calls,
-    closed_calls,
-    holdings,
-
-):
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        metric(
-            "Option Profit",
-            money(option_profit),
-        )
-
-    with c2:
-        metric(
-            "Open Calls",
-            open_calls,
-        )
-
-    with c3:
-        metric(
-            "Closed Calls",
-            closed_calls,
-        )
-
-    with c4:
-        metric(
-            "Holdings",
-            holdings,
-        )
-
-
-# =====================================================
-# CHARGES KPIs
-# =====================================================
-
-def charges_cards(
-
-    premium_collected,
-    total_charges,
-
-):
+    # ----------------------------
+    # Row 2
+    # ----------------------------
 
     c1, c2 = st.columns(2)
 
     with c1:
         metric(
-            "Premium Collected",
-            money(premium_collected),
+            "Equity Gain",
+            money(summary["equity_gain"]),
         )
 
     with c2:
         metric(
+            "ROI",
+            percent(summary["roi"]),
+        )
+
+    # ----------------------------
+    # Row 3
+    # ----------------------------
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        metric(
+            "Option Profit",
+            money(summary["option_profit"]),
+        )
+
+    with c2:
+        metric(
+            "Premium Collected",
+            money(summary["premium_collected"]),
+        )
+
+    # ----------------------------
+    # Row 4
+    # ----------------------------
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        metric(
             "Total Charges",
-            money(total_charges),
+            money(dashboard["total_charges"]),
+        )
+
+    with c2:
+        metric(
+            "Net Portfolio P/L",
+            money(summary["net_portfolio_pl"]),
         )

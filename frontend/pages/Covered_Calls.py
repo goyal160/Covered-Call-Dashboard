@@ -16,6 +16,10 @@ from api import (
     is_logged_in,
 )
 
+from components.styles import load_css
+
+load_css()
+
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================

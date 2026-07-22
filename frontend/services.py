@@ -213,9 +213,39 @@ def portfolio_summary(cash_df, call_df):
     summary["option_profit"] = option_profit
     summary["option_charges"] = option_charges
 
+    premium_collected = 0
+
+    if not call_df.empty:
+
+        required = {
+            "status",
+            "sell_average",
+            "quantity",
+        }
+
+        if required.issubset(call_df.columns):
+
+            premium_collected = (
+
+                call_df.loc[
+                    call_df["status"] == "OPEN",
+                    "sell_average",
+                ]
+
+                *
+
+                call_df.loc[
+                    call_df["status"] == "OPEN",
+                    "quantity",
+                ]
+
+            ).sum()
+
+    summary["premium_collected"] = premium_collected
+
     summary["charges"] = option_charges
 
-    summary["overall_pl"] = (
+    summary["net_portfolio_pl"] = (
 
         equity_gain
 
@@ -223,9 +253,9 @@ def portfolio_summary(cash_df, call_df):
 
         option_profit
 
-        -
+        +
 
-        option_charges
+        premium_collected
 
     )
 
@@ -233,7 +263,7 @@ def portfolio_summary(cash_df, call_df):
 
         round(
 
-            summary["overall_pl"]
+            summary["net_portfolio_pl"]
 
             /
 

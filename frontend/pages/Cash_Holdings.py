@@ -34,6 +34,10 @@ from components.tables import (
     cash_holdings_table,
 )
 
+from components.styles import load_css
+
+load_css()
+
 # =====================================================
 # PAGE CONFIG
 # =====================================================

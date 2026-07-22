@@ -1,13 +1,10 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
 from components.sidebar import render_sidebar
 from components.login import render_login
 
 from components.kpi_cards import (
-    portfolio_summary_cards,
-    option_summary_cards,
-    charges_cards,
+    dashboard_kpi_cards,
 )
 
 from components.charts import (
@@ -34,6 +31,10 @@ from services import (
     dashboard_summary,
 )
 
+from components.styles import load_css
+
+load_css()
+
 # =====================================================
 # PAGE CONFIGURATION
 # =====================================================
@@ -56,7 +57,8 @@ render_sidebar(
 
 st.title("📈 Covered Call Portfolio Dashboard")
 
-st.markdown("---")
+st.markdown("--")
+
 
 # =====================================================
 # LOAD DATA
@@ -97,28 +99,32 @@ dashboard = dashboard_summary(
     calls,
 )
 
-portfolio_summary_cards(summary)
-
-option_summary_cards(
-    summary["option_profit"],
-    dashboard["open_calls"],
-    dashboard["closed_calls"],
-    dashboard["total_holdings"],
-)
-
-charges_cards(
-    dashboard["premium_collected"],
-    dashboard["total_charges"],
-)
-
 # =====================================================
-# PORTFOLIO ALLOCATION
+# DASHBOARD OVERVIEW
+# =====================================================
+# =====================================================
+# DASHBOARD OVERVIEW
 # =====================================================
 
-portfolio_allocation_chart(cash)
+left, right = st.columns(
+    [2, 1],
+    gap="medium",
+)
+
+with left:
+
+    dashboard_kpi_cards(
+        summary,
+        dashboard,
+    )
+
+with right:
+
+    st.subheader("Portfolio Allocation")
+
+    portfolio_allocation_chart(cash)
 
 st.divider()
-
 
 # =====================================================
 # TOP PERFORMING HOLDINGS

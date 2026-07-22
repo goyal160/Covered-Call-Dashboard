@@ -76,11 +76,11 @@ def portfolio_allocation_chart(cash_df):
     )
 
     st.plotly_chart(
-
         fig,
-
         use_container_width=True,
-
+        config={
+            "displayModeBar": False
+        },
     )
 
 
@@ -133,9 +133,21 @@ def holding_value_chart(cash_df):
 
     fig.update_layout(
 
-        yaxis_title="",
+        height=480,
 
-        xaxis_title="Holding Value",
+        margin=dict(
+            l=10,
+            r=10,
+            t=30,
+            b=10,
+        ),
+
+        legend=dict(
+            orientation="h",
+            y=-0.12,
+            x=0.5,
+            xanchor="center",
+        ),
 
     )
 
