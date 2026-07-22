@@ -1,5 +1,7 @@
 import streamlit as st
 
+from config import ADMIN_URL
+
 
 # =====================================================
 # SECTION HEADER
@@ -63,5 +65,5 @@ def quick_navigation():
     with c3:
 
         st.markdown(
-            "[⚙ Django Admin](http://127.0.0.1:8000/admin/)"
+            f"[⚙ Django Admin]({ADMIN_URL})"
         )
