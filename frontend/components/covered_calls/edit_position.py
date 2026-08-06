@@ -126,9 +126,12 @@ def render_edit_closed_position(row):
             step=1,
         )
 
-        charges = st.number_input(
-            "Charges",
-            value=float(row["charges"]),
+        closing_charges = st.number_input(
+            "Closing Charges",
+            min_value=0.0,
+            value=float(
+                row.get("closing_charges", 0)
+            ),
             format="%.2f",
         )
 
@@ -154,7 +157,7 @@ def render_edit_closed_position(row):
             "sell_average": sell_average,
             "buy_average": buy_average,
             "quantity": quantity,
-            "charges": charges,
+            "charges": closing_charges,
             "close_date": str(close_date),
         },
     )
