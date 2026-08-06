@@ -55,7 +55,7 @@ def dataframe(
 
         hide_index=hide_index,
 
-        use_container_width=True,
+        width="stretch",
 
     )
 
@@ -86,15 +86,36 @@ def cash_holdings_table(df):
 
     )
 
-    display["Current Value"] = (
+    if "status" in display.columns:
 
-        display["current_price"]
+        display["Current Value"] = display.apply(
+            lambda r:
+                r["close_price"] * r["quantity"]
+                if r["status"] == "CLOSED"
+                else r["current_price"] * r["quantity"],
+            axis=1,
+        )
 
-        *
+        if "realized_gain" in display.columns:
 
-        display["quantity"]
+            display["Gain/Loss"] = display.apply(
+                lambda r:
+                    r["realized_gain"]
+                    if r["status"] == "CLOSED"
+                    else r["gain_loss"],
+                axis=1,
+            )
 
-    )
+        else:
+
+            display["Gain/Loss"] = display["gain_loss"]
+
+    else:
+
+        display["Current Value"] = (
+            display["current_price"]
+            * display["quantity"]
+        )
 
     name_col = (
         "holding_name"
@@ -109,6 +130,8 @@ def cash_holdings_table(df):
         columns=[
 
             name_col,
+
+            "status"
 
             "buy_average",
 
@@ -130,13 +153,15 @@ def cash_holdings_table(df):
 
             name_col: "Script",
 
+            "status": "Status",
+
             "buy_average": "Buy Avg",
 
             "current_price": "Current Price",
 
             "quantity": "Qty",
 
-            "gain_loss": "Gain/Loss",
+            "Gain/Loss": "Gain/Loss",
 
             "charges": "Charges",
 

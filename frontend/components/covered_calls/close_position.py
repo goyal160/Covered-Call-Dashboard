@@ -1,6 +1,6 @@
 import streamlit as st
 
-from api import patch_covered_call
+from api import close_covered_call
 
 
 def render_close_position(row):
@@ -11,7 +11,7 @@ def render_close_position(row):
     if st.button(
         "✔ Close Position",
         key=f"close_{row['id']}",
-        use_container_width=True,
+        width="stretch",
     ):
         st.session_state["close_id"] = row["id"]
 
@@ -33,37 +33,26 @@ def render_close_position(row):
             "Close Date"
         )
 
-        charges = st.number_input(
+        closing_charges = st.number_input(
             "Closing Charges",
             min_value=0.0,
-            value=float(row.get("charges", 0)),
+            value=0.0,
             format="%.2f",
         )
 
         submitted = st.form_submit_button(
             "Close Position",
-            use_container_width=True,
+            width="stretch",
         )
 
     if not submitted:
         return
 
-    patch_covered_call(
-
+    close_covered_call(
         row["id"],
-
-        {
-
-            "buy_average": buy_average,
-
-            "charges": charges,
-
-            "close_date": str(close_date),
-
-            "status": "CLOSED",
-
-        },
-
+        buy_average,
+        close_date,
+        closing_charges,
     )
 
     st.success(

@@ -30,5 +30,5 @@ def render_cash_allocation(df):
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
     )

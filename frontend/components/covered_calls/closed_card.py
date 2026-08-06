@@ -51,11 +51,39 @@ def render_closed_card(row):
 
         with right:
 
+            gross_premium = (
+                float(row["sell_average"])
+                * int(row["quantity"])
+            )
+
+            buyback_cost = (
+                float(row["buy_average"])
+                * int(row["quantity"])
+            )
+
+            total_charges = (
+                float(row["opening_charges"])
+                + 
+                float(row["closing_charges"])
+            )
+
             st.write("**Quantity**")
             st.write(row["quantity"])
 
-            st.write("**Charges**")
-            st.write(row["charges"])
+            st.write("**Opening Charges**")
+            st.write(f"₹ {float(row['opening_charges']):,.2f}")
+
+            st.write("**Closing Charges**")
+            st.write(f"₹ {float(row['closing_charges']):,.2f}")
+
+            st.write("**Total Charges**")
+            st.write(f"₹ {total_charges:,.2f}")
+
+            st.write("**Gross Premium**")
+            st.write(f"₹ {gross_premium:,.2f}")
+
+            st.write("**Buyback Cost**")
+            st.write(f"₹ {buyback_cost:,.2f}")
 
             st.write("**Close Date**")
             st.write(row["close_date"])

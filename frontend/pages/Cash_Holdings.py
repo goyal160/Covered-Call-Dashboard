@@ -4,9 +4,11 @@ import pandas as pd
 from api import (
     get_cash_holdings,
     is_logged_in,
+    get_cash_transactions,
 )
 
-from services import cash_holding_summary
+from components.cash.cash_transaction_form import render_cash_transaction_form
+from services import cash_balance, cash_holding_summary
 
 from components.sidebar import render_sidebar
 
@@ -75,7 +77,7 @@ render_sidebar(
 # TITLE
 # =====================================================
 
-st.title("💰 Cash Holdings")
+st.title("💰 Cash Holdings & Portfolio Cash")
 
 # =====================================================
 # LOAD DATA
@@ -86,13 +88,51 @@ cash = get_cash_holdings()
 if cash is None:
     cash = pd.DataFrame()
 
-summary = cash_holding_summary(cash)
+if cash.empty:
+
+    open_cash = pd.DataFrame()
+    closed_cash = pd.DataFrame()
+
+else:
+
+    if "status" in cash.columns:
+
+        open_cash = cash[
+            cash["status"] == "OPEN"
+        ]
+
+        closed_cash = cash[
+            cash["status"] == "CLOSED"
+        ]
+
+    else:
+
+        open_cash = cash.copy()
+        closed_cash = pd.DataFrame()
+
+summary = cash_holding_summary(open_cash)
 
 # =====================================================
 # KPI
 # =====================================================
 
 render_cash_summary(summary)
+
+transactions = get_cash_transactions()
+
+if not transactions.empty:
+
+    balance = pd.to_numeric(
+        cash_balance()["cash_balance"],
+        errors="coerce",
+    )
+
+    if pd.isna(balance):
+        balance = 0
+
+    st.info(
+        f"💵 Available Cash Balance : ₹ {balance:,.2f}"
+    )
 
 st.divider()
 
@@ -122,7 +162,7 @@ sort_by = right.selectbox(
 
 )
 
-display_cash = cash.copy()
+display_cash = open_cash.copy()
 
 if not display_cash.empty:
 
@@ -180,6 +220,15 @@ if not display_cash.empty:
 
         )
 
+# ============================================================
+# CASH TRANSACTION
+# ============================================================
+
+render_cash_transaction_form()
+
+st.divider()
+
+
 # =====================================================
 # ADD FORM
 # =====================================================
@@ -187,20 +236,84 @@ if not display_cash.empty:
 render_add_holding()
 
 # =====================================================
-# TABLE
+# OPEN / CLOSED HOLDINGS
 # =====================================================
 
-st.subheader("Current Holdings")
+tab1, tab2 = st.tabs(
+    [
+        "📈 Open Holdings",
+        "🔒 Closed Holdings",
+    ]
+)
 
-cash_holdings_table(display_cash)
+# -----------------------------------------------------
+# OPEN HOLDINGS
+# -----------------------------------------------------
 
-st.divider()
+with tab1:
 
-# =====================================================
-# CARDS
-# =====================================================
+    st.subheader("Open Holdings")
 
-render_holding_cards(display_cash)
+    cash_holdings_table(display_cash)
+
+    st.divider()
+
+    render_holding_cards(display_cash)
+
+# -----------------------------------------------------
+# CLOSED HOLDINGS
+# -----------------------------------------------------
+
+with tab2:
+
+    if closed_cash.empty:
+
+        st.info("No closed holdings available.")
+
+    else:
+
+        closed_display = closed_cash.copy()
+
+
+        numeric_cols = [
+            "buy_average",
+            "close_price",
+            "quantity",
+            "realized_gain",
+            "charges",
+        ]
+
+        for col in numeric_cols:
+            if col in closed_display.columns:
+                closed_display[col] = pd.to_numeric(
+                    closed_display[col],
+                    errors="coerce",
+                )
+
+
+        closed_display["Investment"] = (
+            closed_display["buy_average"]
+            * closed_display["quantity"]
+        )
+
+        closed_display["Sale Value"] = (
+            closed_display["close_price"]
+            * closed_display["quantity"]
+        )
+
+        st.dataframe(
+            closed_display[
+                [
+                    "script_name",
+                    "close_date",
+                    "Investment",
+                    "Sale Value",
+                    "realized_gain",
+                ]
+            ],
+            hide_index=True,
+            width="stretch",
+        )
 
 st.divider()
 

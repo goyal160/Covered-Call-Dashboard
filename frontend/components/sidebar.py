@@ -32,7 +32,7 @@ def render_sidebar(
 
             if st.button(
                 "🏠 Dashboard",
-                use_container_width=True,
+                width="stretch",
             ):
 
                 st.switch_page(
@@ -41,7 +41,7 @@ def render_sidebar(
 
         if st.button(
             "🚪 Logout",
-            use_container_width=True,
+            width="stretch",
         ):
 
             logout()

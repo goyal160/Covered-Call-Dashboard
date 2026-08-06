@@ -2,8 +2,15 @@ from decimal import Decimal
 
 from django.db import models
 
+from django.utils import timezone
+
 
 class CashHolding(models.Model):
+
+    STATUS_CHOICES = [
+        ("OPEN", "Open"),
+        ("CLOSED", "Closed"),
+    ]
 
     script_name = models.CharField(
         max_length=50,
@@ -26,6 +33,30 @@ class CashHolding(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="OPEN",
+    )
+
+    close_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    close_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    realized_gain = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
 
     class Meta:
@@ -96,10 +127,16 @@ class CoveredCall(models.Model):
 
     quantity = models.PositiveIntegerField()
 
-    charges = models.DecimalField(
+    opening_charges = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=0
+        default=0,
+    )
+
+    closing_charges = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
     )
 
     close_date = models.DateField(
@@ -131,16 +168,25 @@ class CoveredCall(models.Model):
 
             self.buy_average = Decimal("0.00")
             self.close_date = None
+            self.closing_charges = Decimal("0.00")
             self.net_profit = Decimal("0.00")
 
         else:
 
+            gross_profit = (
+                self.sell_average -
+                self.buy_average
+            ) * self.quantity
+
+            total_charges = (
+                self.opening_charges
+                + self.closing_charges
+            )
+
             self.net_profit = (
-                (
-                    self.sell_average -
-                    self.buy_average
-                ) * self.quantity
-            ) - self.charges
+                gross_profit
+                - total_charges
+            )
 
         super().save(*args, **kwargs)
 
@@ -151,3 +197,99 @@ class CoveredCall(models.Model):
             f"{self.strike} | "
             f"{self.expiry_date}"
         )
+
+
+class CashTransaction(models.Model):
+
+    TRANSACTION_TYPES = [
+
+        ("INITIAL", "Initial Capital"),
+        ("DEPOSIT", "Deposit"),
+        ("WITHDRAW", "Withdrawal"),
+
+        ("BUY", "Buy Holding"),
+        ("SELL", "Sell Holding"),
+
+        ("PREMIUM", "Option Premium"),
+        ("BUYBACK", "Option Buyback"),
+
+        ("ADJUSTMENT", "Adjustment"),
+    ]
+
+    transaction_date = models.DateField(
+        default=timezone.localdate,
+    )
+
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TRANSACTION_TYPES,
+    )
+
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+    )
+
+    remarks = models.CharField(
+        max_length=250,
+        blank=True,
+    )
+
+    holding = models.ForeignKey(
+        CashHolding,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cash_transactions",
+    )
+
+    running_balance = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
+    notes = models.CharField(
+        max_length=250,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+
+        ordering = [
+            "-transaction_date",
+            "-id",
+        ]
+
+        indexes = [
+            models.Index(fields=["transaction_date"]),
+            models.Index(fields=["transaction_type"]),
+        ]
+
+    def __str__(self):
+
+        return (
+            f"{self.transaction_date} - "
+            f"{self.transaction_type} - "
+            f"₹{self.amount}"
+        )
+
+    @property
+    def signed_amount(self):
+
+        if self.transaction_type in [
+            "BUY",
+            "WITHDRAW",
+            "BUYBACK",
+        ]:
+            return -self.amount
+
+        return self.amount

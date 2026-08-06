@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CashHoldingViewSet,
     CoveredCallViewSet,
+    CashTransactionViewSet,
     login_view,
     logout_view,
 )
@@ -20,6 +21,12 @@ router.register(
     "covered-calls",
     CoveredCallViewSet,
     basename="covered-calls",
+)
+
+router.register(
+    "cash-transactions",
+    CashTransactionViewSet,
+    basename="cash-transactions",
 )
 
 urlpatterns = [

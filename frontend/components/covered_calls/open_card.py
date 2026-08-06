@@ -15,9 +15,14 @@ from components.covered_calls.delete_position import (
 
 def render_open_card(row):
 
-    premium = (
+    gross_premium = (
         float(row["sell_average"])
         * int(row["quantity"])
+    )
+
+    net_premium = (
+        gross_premium
+        - float(row["opening_charges"])
     )
 
     title = (
@@ -53,11 +58,11 @@ def render_open_card(row):
             st.write("**Quantity**")
             st.write(row["quantity"])
 
-            st.write("**Charges**")
-            st.write(row["charges"])
+            st.write("**Opening Charges**")
+            st.write(f"₹ {float(row['opening_charges']):,.2f}")
 
             st.write("**Premium Collected**")
-            st.write(f"₹ {premium:,.2f}")
+            st.write(f"₹ {net_premium:,.2f}")
 
             st.write("**Status**")
             st.success("OPEN")

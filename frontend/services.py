@@ -1,4 +1,135 @@
 import pandas as pd
+from datetime import date
+from pyxirr import xirr
+from api import get_cash_transactions
+
+
+# =====================================================
+# CASH BALANCE
+# =====================================================
+
+def cash_balance():
+
+    transactions = get_cash_transactions()
+
+    if transactions is None or transactions.empty:
+
+        return {
+            "cash_balance": 0.0,
+            "cash_added": 0.0,
+            "cash_withdrawn": 0.0,
+        }
+
+    transactions["amount"] = pd.to_numeric(
+        transactions["amount"],
+        errors="coerce",
+    ).fillna(0)
+
+    transactions["running_balance"] = pd.to_numeric(
+        transactions["running_balance"],
+        errors="coerce",
+    ).fillna(0)
+
+    return {
+
+        "cash_balance": float(
+            transactions.iloc[0]["running_balance"]
+        ),
+
+        "cash_added": float(
+
+            transactions.loc[
+                transactions["transaction_type"].isin(
+                    ["INITIAL", "DEPOSIT"]
+                ),
+                "amount",
+            ].sum()
+
+        ),
+
+        "cash_withdrawn": float(
+
+            transactions.loc[
+                transactions["transaction_type"] == "WITHDRAW",
+                "amount",
+            ].sum()
+
+        ),
+
+    }
+
+
+# =====================================================
+# XIRR
+# =====================================================
+
+def calculate_xirr(current_portfolio_value):
+
+    transactions = get_cash_transactions()
+
+    if transactions is None or transactions.empty:
+        return 0.0
+
+    cashflows = []
+
+    for _, row in transactions.iterrows():
+
+        amount = pd.to_numeric(
+            row["amount"],
+            errors="coerce",
+        )
+
+        if pd.isna(amount):
+            continue
+
+        txn_type = row["transaction_type"]
+
+        # Money invested
+        if txn_type in ("INITIAL", "DEPOSIT"):
+            amount = -amount
+
+        # Money withdrawn
+        elif txn_type == "WITHDRAW":
+            amount = amount
+
+        else:
+            continue
+
+        cashflows.append(
+            (
+                pd.to_datetime(
+                    row["transaction_date"]
+                ).date(),
+                float(amount),
+            )
+        )
+
+    # Current Portfolio Value
+
+    cashflows.append(
+
+        (
+            date.today(),
+            float(current_portfolio_value),
+        )
+
+    )
+
+    if len(cashflows) < 2:
+        return 0.0
+
+    try:
+
+        return round(
+            xirr(cashflows) * 100,
+            2,
+        )
+
+    except Exception as e:
+
+        print("XIRR Error:", e)
+
+        return 0.0
 
 
 # =====================================================
@@ -6,67 +137,126 @@ import pandas as pd
 # =====================================================
 
 def dashboard_summary(cash_df, calls_df):
-    """
-    Dashboard KPIs not included in portfolio_summary().
-    """
 
     summary = {
+
         "total_holdings": 0,
         "open_calls": 0,
         "closed_calls": 0,
         "premium_collected": 0.0,
         "total_charges": 0.0,
+
     }
+
+    # -------------------------------------------------
+    # CASH HOLDINGS
+    # -------------------------------------------------
 
     if cash_df is not None and not cash_df.empty:
 
-        summary["total_holdings"] = len(cash_df)
+        open_cash = cash_df.copy()
 
-        if "charges" in cash_df.columns:
+        if "status" in open_cash.columns:
+
+            open_cash = open_cash[
+                open_cash["status"] == "OPEN"
+            ]
+
+        summary["total_holdings"] = len(open_cash)
+
+        if "charges" in open_cash.columns:
 
             summary["total_charges"] += (
-                cash_df["charges"]
+
+                pd.to_numeric(
+
+                    open_cash["charges"],
+                    errors="coerce",
+
+                )
+
                 .fillna(0)
+
                 .sum()
+
             )
+
+    # -------------------------------------------------
+    # COVERED CALLS
+    # -------------------------------------------------
 
     if calls_df is not None and not calls_df.empty:
 
-        if "status" in calls_df.columns:
+        calls = calls_df.copy()
 
-            open_df = calls_df[
-                calls_df["status"] == "OPEN"
+        if "status" in calls.columns:
+
+            open_df = calls[
+                calls["status"] == "OPEN"
             ]
 
-            closed_df = calls_df[
-                calls_df["status"] == "CLOSED"
+            closed_df = calls[
+                calls["status"] == "CLOSED"
             ]
 
-            summary["open_calls"] = len(open_df)
+        else:
 
-            summary["closed_calls"] = len(closed_df)
+            open_df = calls
+            closed_df = pd.DataFrame()
 
-            if (
-                "sell_average" in open_df.columns
-                and
-                "quantity" in open_df.columns
-            ):
+        summary["open_calls"] = len(open_df)
 
-                summary["premium_collected"] = (
+        summary["closed_calls"] = len(closed_df)
 
-                    open_df["sell_average"]
+        # -----------------------------------------
+        # Premium Collected
+        # -----------------------------------------
 
-                    *
+        if {
+            "sell_average",
+            "quantity",
+            "opening_charges",
+        }.issubset(open_df.columns):
 
-                    open_df["quantity"]
+            premium = (
 
-                ).sum()
+                pd.to_numeric(
+                    open_df["sell_average"],
+                    errors="coerce",
+                )
 
-        if "charges" in calls_df.columns:
+                *
 
-            summary["total_charges"] += (
+                pd.to_numeric(
+                    open_df["quantity"],
+                    errors="coerce",
+                )
 
-                calls_df["charges"]
+            )
+
+            premium -= pd.to_numeric(
+                open_df["opening_charges"],
+                errors="coerce",
+            ).fillna(0)
+
+            summary["premium_collected"] = premium.sum()
+
+        # -----------------------------------------
+        # Charges
+        # -----------------------------------------
+
+        opening = 0
+
+        closing = 0
+
+        if "opening_charges" in calls.columns:
+
+            opening = (
+
+                pd.to_numeric(
+                    calls["opening_charges"],
+                    errors="coerce",
+                )
 
                 .fillna(0)
 
@@ -74,8 +264,28 @@ def dashboard_summary(cash_df, calls_df):
 
             )
 
-    return summary
+        if "closing_charges" in calls.columns:
 
+            closing = (
+
+                pd.to_numeric(
+                    calls["closing_charges"],
+                    errors="coerce",
+                )
+
+                .fillna(0)
+
+                .sum()
+
+            )
+
+        summary["total_charges"] += (
+
+            opening + closing
+
+        )
+
+    return summary
 
 # =====================================================
 # PORTFOLIO SUMMARY
@@ -83,208 +293,332 @@ def dashboard_summary(cash_df, calls_df):
 
 def portfolio_summary(cash_df, call_df):
 
-    summary = {}
+    summary = {
 
-    investment = 0
-    current_value = 0
-    equity_gain = 0
-    cash_charges = 0
+        "investment": 0.0,
+        "current_value": 0.0,
+        "equity_gain": 0.0,
+
+        "cash_charges": 0.0,
+
+        "option_profit": 0.0,
+        "option_charges": 0.0,
+
+        "premium_collected": 0.0,
+
+        "total_charges": 0.0,
+
+        "net_portfolio_pl": 0.0,
+
+        "cash_balance": 0.0,
+        "cash_added": 0.0,
+        "cash_withdrawn": 0.0,
+
+        "roi": 0.0,
+        "xirr": 0.0,
+
+    }
+
+    # =================================================
+    # CASH HOLDINGS
+    # =================================================
 
     if cash_df is not None and not cash_df.empty:
 
+        cash = cash_df.copy()
+
+        numeric_columns = [
+
+            "buy_average",
+            "current_price",
+            "quantity",
+            "gain_loss",
+            "realized_gain",
+            "charges",
+
+        ]
+
+        for col in numeric_columns:
+
+            if col in cash.columns:
+
+                cash[col] = pd.to_numeric(
+                    cash[col],
+                    errors="coerce",
+                ).fillna(0)
+
+        if "status" in cash.columns:
+
+            open_cash = cash[
+                cash["status"] == "OPEN"
+            ]
+
+            closed_cash = cash[
+                cash["status"] == "CLOSED"
+            ]
+
+        else:
+
+            open_cash = cash
+            closed_cash = pd.DataFrame()
+
         investment = (
 
-            cash_df["buy_average"]
+            open_cash["buy_average"]
 
             *
 
-            cash_df["quantity"]
+            open_cash["quantity"]
 
         ).sum()
 
         current_value = (
 
-            cash_df["current_price"]
+            open_cash["current_price"]
 
             *
 
-            cash_df["quantity"]
+            open_cash["quantity"]
 
         ).sum()
 
-        equity_gain = (
+        unrealized_gain = (
 
-            cash_df["gain_loss"]
-
-            .fillna(0)
-
-            .sum()
-
-            -
-
-            cash_df["charges"]
-
-            .fillna(0)
+            open_cash["gain_loss"]
 
             .sum()
 
         )
+
+        realized_gain = 0.0
+
+        if (
+            not closed_cash.empty
+            and
+            "realized_gain" in closed_cash.columns
+        ):
+
+            realized_gain = (
+
+                closed_cash["realized_gain"]
+
+                .sum()
+
+            )
 
         cash_charges = (
 
-            cash_df["charges"]
-
-            .fillna(0)
+            open_cash["charges"]
 
             .sum()
 
         )
 
-    summary["investment"] = investment
-    summary["current_value"] = current_value
-    summary["equity_gain"] = equity_gain
-    summary["cash_charges"] = cash_charges
+        equity_gain = (
 
-    option_profit = 0
-    option_charges = 0
+            unrealized_gain
+
+            +
+
+            realized_gain
+
+            -
+
+            cash_charges
+
+        )
+
+        summary["investment"] = investment
+
+        summary["current_value"] = current_value
+
+        summary["cash_charges"] = cash_charges
+
+        summary["equity_gain"] = equity_gain
+
+    # =================================================
+    # COVERED CALLS
+    # =================================================
+
+    option_profit = 0.0
+    premium_collected = 0.0
+    option_charges = 0.0
 
     if call_df is not None and not call_df.empty:
 
-        if "net_profit" in call_df.columns:
+        calls = call_df.copy()
 
-            option_profit = (
-
-                call_df["net_profit"]
-
-                .fillna(0)
-
-                .sum()
-
-            )
-
-        elif {
+        numeric_columns = [
 
             "sell_average",
-
             "buy_average",
-
             "quantity",
+            "opening_charges",
+            "closing_charges",
+            "net_profit",
 
-        }.issubset(call_df.columns):
+        ]
 
-            closed = call_df.copy()
+        for col in numeric_columns:
 
-            if "status" in closed.columns:
+            if col in calls.columns:
 
-                closed = closed[
-                    closed["status"] == "CLOSED"
-                ]
+                calls[col] = pd.to_numeric(
 
-            option_profit = (
+                    calls[col],
 
-                (
+                    errors="coerce",
 
-                    closed["sell_average"]
+                ).fillna(0)
 
-                    -
+        if "status" in calls.columns:
 
-                    closed["buy_average"]
+            open_calls = calls[
+                calls["status"] == "OPEN"
+            ]
 
-                )
+            closed_calls = calls[
+                calls["status"] == "CLOSED"
+            ]
 
-                *
+        else:
 
-                closed["quantity"]
+            open_calls = calls
+            closed_calls = pd.DataFrame()
 
-            ).sum()
+        # --------------------------------------------
+        # Premium collected
+        # --------------------------------------------
 
-        if "charges" in call_df.columns:
-
-            option_charges = (
-
-                call_df["charges"]
-
-                .fillna(0)
-
-                .sum()
-
-            )
-
-    summary["option_profit"] = option_profit
-    summary["option_charges"] = option_charges
-
-    premium_collected = 0
-
-    if not call_df.empty:
-
-        required = {
-            "status",
-            "sell_average",
-            "quantity",
-        }
-
-        if required.issubset(call_df.columns):
+        if not open_calls.empty:
 
             premium_collected = (
 
-                call_df.loc[
-                    call_df["status"] == "OPEN",
-                    "sell_average",
-                ]
+                (
 
-                *
+                    open_calls["sell_average"]
 
-                call_df.loc[
-                    call_df["status"] == "OPEN",
-                    "quantity",
-                ]
+                    *
+
+                    open_calls["quantity"]
+
+                )
+
+                -
+
+                open_calls["opening_charges"]
 
             ).sum()
 
-    summary["premium_collected"] = premium_collected
+        # --------------------------------------------
+        # Realized option profit
+        # --------------------------------------------
 
-    summary["charges"] = option_charges
+        if (
+            not closed_calls.empty
+            and
+            "net_profit" in closed_calls.columns
+        ):
 
-    summary["net_portfolio_pl"] = (
+            option_profit = (
 
-        equity_gain
+                closed_calls["net_profit"]
 
-        +
+                .sum()
 
-        option_profit
+            )
 
-        +
+        option_charges = (
 
-        premium_collected
+            calls["opening_charges"].sum()
 
-    )
+            +
 
-    summary["roi"] = (
+            calls["closing_charges"].sum()
 
-        round(
+        )
 
-            summary["net_portfolio_pl"]
+        summary["option_profit"] = option_profit
 
-            /
+        summary["option_charges"] = option_charges
 
-            investment
+        summary["premium_collected"] = premium_collected
 
-            *
+        summary["total_charges"] = (
 
-            100,
+            summary["cash_charges"]
+
+            +
+
+            option_charges
+
+        )
+
+        summary["net_portfolio_pl"] = (
+
+            summary["equity_gain"]
+
+            +
+
+            option_profit
+
+            +
+
+            premium_collected
+
+        )
+
+    # =================================================
+    # CASH BALANCE
+    # =================================================
+
+    cash = cash_balance()
+
+    summary["cash_balance"] = cash["cash_balance"]
+
+    summary["cash_added"] = cash["cash_added"]
+
+    summary["cash_withdrawn"] = cash["cash_withdrawn"]
+
+    current_portfolio_value = (
+    
+            summary["cash_balance"]
+    
+            +
+    
+            summary["current_value"]
+    
+            +
+    
+            summary["premium_collected"]
+    
+        )
+
+    if summary["cash_added"] != 0:
+
+        summary["roi"] = round(
+
+            (
+
+                summary["net_portfolio_pl"]
+
+                /
+
+                summary["cash_added"]
+
+            )
+
+            * 100,
 
             2,
 
         )
 
-        if investment
-
-        else 0
-
-    )
+        summary["xirr"] = calculate_xirr(
+            current_portfolio_value
+        )
 
     return summary
-
 
 # =====================================================
 # CASH HOLDINGS SUMMARY
@@ -295,12 +629,9 @@ def cash_holding_summary(cash_df):
     summary = {
 
         "total_holdings": 0,
-
-        "investment": 0,
-
-        "current_value": 0,
-
-        "gain_loss": 0,
+        "investment": 0.0,
+        "current_value": 0.0,
+        "gain_loss": 0.0,
 
     }
 
@@ -308,43 +639,65 @@ def cash_holding_summary(cash_df):
 
         return summary
 
-    summary["total_holdings"] = len(cash_df)
+    cash = cash_df.copy()
+
+    numeric_columns = [
+
+        "buy_average",
+        "current_price",
+        "quantity",
+        "gain_loss",
+        "charges",
+
+    ]
+
+    for col in numeric_columns:
+
+        if col in cash.columns:
+
+            cash[col] = pd.to_numeric(
+
+                cash[col],
+
+                errors="coerce",
+
+            ).fillna(0)
+
+    if "status" in cash.columns:
+
+        cash = cash[
+            cash["status"] == "OPEN"
+        ]
+
+    summary["total_holdings"] = len(cash)
 
     summary["investment"] = (
 
-        cash_df["buy_average"]
+        cash["buy_average"]
 
         *
 
-        cash_df["quantity"]
+        cash["quantity"]
 
     ).sum()
 
     summary["current_value"] = (
 
-        cash_df["current_price"]
+        cash["current_price"]
 
         *
 
-        cash_df["quantity"]
+        cash["quantity"]
 
     ).sum()
 
     summary["gain_loss"] = (
 
-        cash_df["gain_loss"]
-
-        .fillna(0)
-
-        .sum()
+        cash["gain_loss"].sum()
 
         -
 
-        cash_df["charges"]
-
-        .fillna(0)
-
-        .sum()
+        cash["charges"].sum()
 
     )
 

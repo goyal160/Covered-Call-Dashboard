@@ -29,9 +29,9 @@ def metric(
 
 def dashboard_kpi_cards(summary, dashboard):
 
-    # ----------------------------
+    # ------------------------------------
     # Row 1
-    # ----------------------------
+    # ------------------------------------
 
     c1, c2 = st.columns(2)
 
@@ -47,9 +47,27 @@ def dashboard_kpi_cards(summary, dashboard):
             money(summary["current_value"]),
         )
 
-    # ----------------------------
+    # ------------------------------------
     # Row 2
-    # ----------------------------
+    # ------------------------------------
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        metric(
+            "Cash Balance",
+            money(summary["cash_balance"]),
+        )
+
+    with c2:
+        metric(
+            "ROI",
+            percent(summary["roi"]),
+        )
+
+    # ------------------------------------
+    # Row 3
+    # ------------------------------------
 
     c1, c2 = st.columns(2)
 
@@ -61,42 +79,42 @@ def dashboard_kpi_cards(summary, dashboard):
 
     with c2:
         metric(
-            "ROI",
-            percent(summary["roi"]),
-        )
-
-    # ----------------------------
-    # Row 3
-    # ----------------------------
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        metric(
             "Option Profit",
             money(summary["option_profit"]),
         )
 
-    with c2:
+    # ------------------------------------
+    # Row 4
+    # ------------------------------------
+
+    c1, c2 = st.columns(2)
+
+    with c1:
         metric(
             "Premium Collected",
             money(summary["premium_collected"]),
         )
 
-    # ----------------------------
-    # Row 4
-    # ----------------------------
-
-    c1, c2 = st.columns(2)
-
-    with c1:
+    with c2:
         metric(
             "Total Charges",
             money(dashboard["total_charges"]),
         )
 
-    with c2:
+    # ------------------------------------
+    # Row 5
+    # ------------------------------------
+
+    c1, c2 = st.columns(2)
+
+    with c1:
         metric(
             "Net Portfolio P/L",
             money(summary["net_portfolio_pl"]),
+        )
+
+    with c2:
+        metric(
+            "XIRR",
+            percent(summary.get("xirr", 0)),
         )

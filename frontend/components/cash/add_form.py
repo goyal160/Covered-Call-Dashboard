@@ -41,7 +41,7 @@ def render_add_holding():
 
             submitted = st.form_submit_button(
                 "Add Holding",
-                use_container_width=True,
+                width="stretch",
             )
 
             if submitted:

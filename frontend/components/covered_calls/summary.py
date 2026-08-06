@@ -1,7 +1,31 @@
 import streamlit as st
+import pandas as pd
 
 
 def render_summary(open_df, closed_df):
+
+    numeric_columns = [
+        "sell_average",
+        "buy_average",
+        "quantity",
+        "opening_charges",
+        "closing_charges",
+        "net_profit",
+    ]
+
+    for col in numeric_columns:
+
+        if col in open_df.columns:
+            open_df[col] = pd.to_numeric(
+                open_df[col],
+                errors="coerce",
+            ).fillna(0)
+
+        if col in closed_df.columns:
+            closed_df[col] = pd.to_numeric(
+                closed_df[col],
+                errors="coerce",
+            ).fillna(0)
 
     open_calls = len(open_df)
 
@@ -18,13 +42,11 @@ def render_summary(open_df, closed_df):
     if not open_df.empty:
 
         premium_collected = (
-
-            open_df["sell_average"]
-
-            *
-
-            open_df["quantity"]
-
+            (
+                open_df["sell_average"]
+                * open_df["quantity"]
+            )
+            - open_df["opening_charges"]
         ).sum()
 
     # ----------------------------------------

@@ -29,7 +29,7 @@ def render_login():
 
         submitted = st.form_submit_button(
             "Login",
-            use_container_width=True,
+            width="stretch",
         )
 
     if submitted:

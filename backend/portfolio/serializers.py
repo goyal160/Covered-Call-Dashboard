@@ -1,6 +1,10 @@
 from rest_framework import serializers
 
-from .models import CashHolding, CoveredCall
+from .models import (
+    CashHolding,
+    CoveredCall,
+    CashTransaction,
+)
 
 
 class CashHoldingSerializer(serializers.ModelSerializer):
@@ -18,11 +22,23 @@ class CashHoldingSerializer(serializers.ModelSerializer):
             "current_price",
             "quantity",
             "charges",
+
             "investment",
             "current_value",
             "gain_loss",
+
+            "status",
+            "close_price",
+            "close_date",
+            "realized_gain",
         ]
 
+        read_only_fields = [
+            "investment",
+            "current_value",
+            "gain_loss",
+            "realized_gain",
+        ]
 
 class CoveredCallSerializer(serializers.ModelSerializer):
 
@@ -43,7 +59,8 @@ class CoveredCallSerializer(serializers.ModelSerializer):
             "sell_average",
             "buy_average",
             "quantity",
-            "charges",
+            "opening_charges",
+            "closing_charges",
             "status",
             "close_date",
             "net_profit",
@@ -51,5 +68,38 @@ class CoveredCallSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "net_profit",
+            "holding_name",
+        ]
+
+
+class CashTransactionSerializer(serializers.ModelSerializer):
+
+    holding_name = serializers.CharField(
+        source="holding.script_name",
+        read_only=True,
+    )
+
+    class Meta:
+
+        model = CashTransaction
+
+        fields = [
+            "id",
+            "transaction_date",
+            "transaction_type",
+            "amount",
+            "remarks",
+            "notes",
+            "holding",
+            "holding_name",
+            "running_balance",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "running_balance",
+            "created_at",
+            "updated_at",
             "holding_name",
         ]

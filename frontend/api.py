@@ -138,6 +138,7 @@ def get_dataframe(endpoint, params=None):
 
     return clean_dataframe(df)
 
+
 # ==========================================================
 # CASH HOLDINGS
 # ==========================================================
@@ -158,10 +159,139 @@ def patch_cash_holding(pk, data):
     return request("PATCH", f"cash-holdings/{pk}/", payload=data)
 
 
+# ==========================================================
+# CLOSE CASH HOLDING
+# ==========================================================
+
+def close_cash_holding(
+    pk,
+    sell_price,
+    close_date,
+    charges,
+):
+
+    payload = {
+
+        "sell_price": sell_price,
+
+        "close_date": str(close_date),
+
+        "charges": charges,
+
+    }
+
+    return request(
+
+        "POST",
+
+        f"cash-holdings/{pk}/close/",
+
+        payload=payload,
+
+    )
+
+
+def get_open_cash_holdings():
+
+    return get_dataframe(
+        "cash-holdings/",
+        params={"status": "OPEN"},
+    )
+
+
+def get_closed_cash_holdings():
+
+    return get_dataframe(
+        "cash-holdings/",
+        params={"status": "CLOSED"},
+    )
+
+
 def delete_cash_holding(pk):
     request("DELETE", f"cash-holdings/{pk}/")
     return True
 
+# ==========================================================
+# PORTFOLIO CASH
+# ==========================================================
+
+def get_cash_transactions():
+    return get_dataframe("cash-transactions/")
+
+
+def get_cash_transaction(pk):
+    return request(
+        "GET",
+        f"cash-transactions/{pk}/",
+    )
+
+def create_cash_transaction(
+    transaction_type,
+    amount,
+    remarks="",
+):
+
+    payload = {
+        "transaction_type": transaction_type,
+        "amount": amount,
+        "remarks": remarks,
+    }
+
+    return request(
+        "POST",
+        "cash-transactions/",
+        payload=payload,
+    )
+
+def patch_cash_transaction(pk, data):
+    return request(
+        "PATCH",
+        f"cash-transactions/{pk}/",
+        payload=data,
+    )
+
+def delete_cash_transaction(pk):
+    request(
+        "DELETE",
+        f"cash-transactions/{pk}/",
+    )
+    return True
+
+# ==========================================================
+# CASH BALANCE
+# ==========================================================
+
+def get_cash_balance():
+
+    df = get_cash_transactions()
+
+    if df.empty:
+
+        return 0
+
+    if "running_balance" in df.columns:
+
+        return float(df.iloc[0]["running_balance"])
+
+    return 0
+
+
+def deposit_cash(amount, remarks=""):
+
+    return create_cash_transaction(
+        "DEPOSIT",
+        amount,
+        remarks,
+    )
+
+
+def withdraw_cash(amount, remarks=""):
+
+    return create_cash_transaction(
+        "WITHDRAW",
+        amount,
+        remarks,
+    )
 
 # ==========================================================
 # COVERED CALLS
@@ -213,7 +343,7 @@ def close_covered_call(
     pk,
     buy_average,
     close_date,
-    charges,
+    closing_charges,
 ):
 
     payload = {
@@ -222,7 +352,7 @@ def close_covered_call(
 
         "close_date": str(close_date),
 
-        "charges": charges,
+        "closing_charges": closing_charges,
 
         "status": "CLOSED",
 
@@ -240,6 +370,8 @@ def reopen_covered_call(pk):
         "buy_average": 0,
 
         "close_date": None,
+
+        "closing_charges": 0,
 
     }
 
@@ -277,6 +409,23 @@ def clear_session():
         "username",
         None,
     )
+
+
+# ==========================================================
+# PORTFOLIO SUMMARY HELPERS
+# ==========================================================
+
+def get_portfolio_snapshot():
+
+    return {
+
+        "cash": get_cash_holdings(),
+
+        "calls": get_covered_calls(),
+
+        "transactions": get_cash_transactions(),
+
+    }
 
 
 # ==========================================================

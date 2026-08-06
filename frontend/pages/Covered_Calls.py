@@ -71,12 +71,6 @@ def load_data():
 
 open_df, closed_df, holdings = load_data()
 
-st.write("Open DF")
-st.dataframe(open_df)
-
-st.write("Closed DF")
-st.dataframe(closed_df)
-
 # ============================================================
 # ENSURE DATAFRAMES
 # ============================================================

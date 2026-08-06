@@ -5,6 +5,10 @@ from api import (
     delete_cash_holding,
 )
 
+from components.cash.close_holding import (
+    render_close_holding,
+)
+
 
 def render_edit_form(row):
 
@@ -126,8 +130,11 @@ def render_holding_cards(cash_df):
 
         title = (
             f"📈 {row['script_name']} "
-            f"| Qty : {int(row['quantity'])}"
+            f"| Qty: {int(row['quantity'])}"
         )
+
+        if row.get("status") == "CLOSED":
+            title = "🔒 " + title
 
         with st.expander(title):
 
@@ -153,13 +160,29 @@ def render_holding_cards(cash_df):
 
             with right:
 
-                st.write(
-                    f"**Current Value :** ₹ {current_value:,.2f}"
-                )
+                if row.get("status") == "OPEN":
 
-                st.write(
-                    f"**Gain / Loss :** ₹ {row['gain_loss']:,.2f}"
-                )
+                    st.write(
+                        f"**Current Value :** ₹ {current_value:,.2f}"
+                    )
+
+                    st.write(
+                        f"**Gain / Loss :** ₹ {row['gain_loss']:,.2f}"
+                    )
+
+                else:
+
+                    st.write(
+                        f"**Close Price :** ₹ {row['close_price']:,.2f}"
+                    )
+
+                    st.write(
+                        f"**Realized Gain :** ₹ {row['realized_gain']:,.2f}"
+                    )
+
+                    st.write(
+                        f"**Close Date :** {row['close_date']}"
+                    )
 
                 st.write(
                     f"**Charges :** ₹ {row['charges']:,.2f}"
@@ -167,7 +190,7 @@ def render_holding_cards(cash_df):
 
             st.divider()
 
-            edit_col, delete_col = st.columns(2)
+            edit_col, close_col, delete_col = st.columns(3)
 
             # =====================================================
             # EDIT BUTTON
@@ -175,16 +198,42 @@ def render_holding_cards(cash_df):
 
             with edit_col:
 
-                if st.button(
-                    "✏ Edit",
-                    key=f"edit_{row['id']}",
-                ):
+                if row.get("status") == "OPEN":
 
-                    st.session_state["edit_cash"] = row["id"]
+                    if st.button(
+                        "✏ Edit",
+                        key=f"edit_{row['id']}",
+                    ):
+
+                        st.session_state["edit_cash"] = row["id"]
+
+                else:
+
+                    st.caption("Closed")
 
             if st.session_state.get("edit_cash") == row["id"]:
 
                 render_edit_form(row)
+
+            # =====================================================
+            # CLOSE BUTTON
+            # =====================================================
+
+            with close_col:
+
+                if row.get("status", "OPEN") == "OPEN":
+
+                    if st.button(
+                        "✅ Close",
+                        key=f"close_{row['id']}",
+                    ):
+
+                        st.session_state["close_cash"] = row["id"]
+
+            if st.session_state.get("close_cash") == row["id"]:
+
+                render_close_holding(row)
+
 
             # =====================================================
             # DELETE BUTTON
@@ -192,13 +241,15 @@ def render_holding_cards(cash_df):
 
             with delete_col:
 
-                if st.button(
-                    "🗑 Delete",
-                    key=f"delete_{row['id']}",
-                ):
+                if row.get("status") == "OPEN":
 
-                    st.session_state["delete_cash"] = row["id"]
+                    if st.button(
+                        "🗑 Delete",
+                        key=f"delete_{row['id']}",
+                    ):
 
-            if st.session_state.get("delete_cash") == row["id"]:
+                        st.session_state["delete_cash"] = row["id"]
 
-                render_delete_confirmation(row)
+                else:
+
+                    st.caption("History")

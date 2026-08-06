@@ -59,15 +59,15 @@ def render_add_form(holdings_df):
                     step=1,
                 )
 
-                charges = st.number_input(
-                    "Charges",
+                opening_charges = st.number_input(
+                    "Opening Charges",
                     min_value=0.0,
                     format="%.2f",
                 )
 
             submitted = st.form_submit_button(
                 "Save Covered Call",
-                use_container_width=True,
+                width="stretch",
             )
 
         if not submitted:
@@ -96,11 +96,9 @@ def render_add_form(holdings_df):
 
                 "sell_average": sell_average,
 
-                "buy_average": 0,
-
                 "quantity": quantity,
 
-                "charges": charges,
+                "opening_charges": opening_charges,
 
                 "status": "OPEN",
 

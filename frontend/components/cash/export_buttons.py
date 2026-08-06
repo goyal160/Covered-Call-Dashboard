@@ -20,7 +20,7 @@ def render_export_buttons(display):
 
         "text/csv",
 
-        use_container_width=True,
+        width="stretch",
 
     )
 
@@ -48,7 +48,7 @@ def render_export_buttons(display):
 
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
-            use_container_width=True,
+            width="stretch",
 
         )
 

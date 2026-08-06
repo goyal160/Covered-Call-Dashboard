@@ -23,6 +23,21 @@ def portfolio_allocation_chart(cash_df):
 
     allocation = cash_df.copy()
 
+    # Show only active holdings in allocation chart
+    if "status" in allocation.columns:
+
+        allocation = allocation[
+            allocation["status"] == "OPEN"
+        ]
+
+    if allocation.empty:
+
+        st.info(
+            "No Open Holdings Available."
+        )
+
+        return
+
     allocation["Holding Value"] = (
 
         allocation["current_price"]
@@ -38,6 +53,14 @@ def portfolio_allocation_chart(cash_df):
         "holding_name"
         if "holding_name" in allocation.columns
         else "script_name"
+    )
+
+    allocation = allocation.sort_values(
+
+        "Holding Value",
+
+        ascending=False,
+
     )
 
     fig = px.pie(
@@ -58,26 +81,40 @@ def portfolio_allocation_chart(cash_df):
 
         textposition="inside",
 
-        textinfo="percent+label",
+        textinfo="percent",
+
+        hovertemplate=
+
+            "<b>%{label}</b><br>"
+
+            "Value : ₹%{value:,.0f}<br>"
+
+            "Allocation : %{percent}"
+
+            "<extra></extra>",
 
     )
 
     fig.update_layout(
 
+        title="Portfolio Allocation",
+
+        height=430,
+
         legend_title="",
 
         margin=dict(
-            t=60,
-            b=20,
-            l=20,
-            r=20,
+            t=40,
+            b=10,
+            l=10,
+            r=10,
         ),
 
     )
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width = "stretch",
         config={
             "displayModeBar": False
         },
@@ -99,6 +136,15 @@ def holding_value_chart(cash_df):
 
     data = cash_df.copy()
 
+    if "status" in data.columns:
+
+        data = data[
+            data["status"] == "OPEN"
+        ]
+
+    if data.empty:
+        return
+
     data["Holding Value"] = (
 
         data["current_price"]
@@ -113,6 +159,14 @@ def holding_value_chart(cash_df):
         "holding_name"
         if "holding_name" in data.columns
         else "script_name"
+    )
+
+    data = data.sort_values(
+
+        "Holding Value",
+
+        ascending=True,
+
     )
 
     fig = px.bar(
@@ -155,6 +209,6 @@ def holding_value_chart(cash_df):
 
         fig,
 
-        use_container_width=True,
+        width="stretch",
 
     )

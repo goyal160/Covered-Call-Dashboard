@@ -15,6 +15,7 @@ from api import (
     is_logged_in,
     get_cash_holdings,
     get_covered_calls,
+    get_cash_transactions,
 )
 
 from components.tables import (
@@ -66,8 +67,28 @@ st.markdown("--")
 
 cash = get_cash_holdings()
 
+if cash is None:
+    cash = pd.DataFrame()
+
+if not cash.empty and "status" in cash.columns:
+
+    open_cash = cash[
+        cash["status"] == "OPEN"
+    ]
+
+    closed_cash = cash[
+        cash["status"] == "CLOSED"
+    ]
+
+else:
+
+    open_cash = cash.copy()
+
+    closed_cash = pd.DataFrame()
+
 calls = get_covered_calls()
 
+transactions = get_cash_transactions()
 
 # =====================================================
 # SAFETY
@@ -85,8 +106,8 @@ if calls is None:
 # =====================================================
 
 summary = portfolio_summary(
-    cash,
-    calls
+    open_cash,
+    calls,
 )
 
 
@@ -95,20 +116,17 @@ summary = portfolio_summary(
 # =====================================================
 
 dashboard = dashboard_summary(
-    cash,
+    open_cash,
     calls,
 )
 
 # =====================================================
 # DASHBOARD OVERVIEW
 # =====================================================
-# =====================================================
-# DASHBOARD OVERVIEW
-# =====================================================
 
 left, right = st.columns(
-    [2, 1],
-    gap="medium",
+    [1.8, 1.2],
+    gap="small",
 )
 
 with left:
@@ -120,11 +138,12 @@ with left:
 
 with right:
 
-    st.subheader("Portfolio Allocation")
+    # st.subheader("Portfolio Allocation")
 
-    portfolio_allocation_chart(cash)
+    portfolio_allocation_chart(open_cash)
 
 st.divider()
+
 
 # =====================================================
 # TOP PERFORMING HOLDINGS
@@ -138,7 +157,7 @@ if cash.empty:
 
 else:
 
-    top = cash.copy()
+    top = open_cash.copy()
 
     top = top.sort_values(
 
@@ -195,6 +214,35 @@ st.divider()
 
 
 # =====================================================
+# CASH BALANCE
+# =====================================================
+
+st.subheader("💵 Portfolio Cash")
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.metric(
+        "Available Cash",
+        f"₹ {summary['cash_balance']:,.2f}"
+    )
+
+with c2:
+    st.metric(
+        "Total Deposits",
+        f"₹ {summary['cash_added']:,.2f}"
+    )
+
+with c3:
+    st.metric(
+        "Total Withdrawals",
+        f"₹ {summary['cash_withdrawn']:,.2f}"
+    )
+
+st.divider()
+
+
+# =====================================================
 # CASH HOLDINGS
 # =====================================================
 
@@ -215,7 +263,7 @@ if cash.empty:
 
 else:
 
-    cash_holdings_table(cash)
+    cash_holdings_table(open_cash)
 
 
 st.divider()
