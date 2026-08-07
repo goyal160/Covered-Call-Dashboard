@@ -267,6 +267,84 @@ class CashHoldingViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    def perform_update(self, serializer):
+
+        old = self.get_object()
+
+        # -----------------------------
+        # Store old values
+        # -----------------------------
+        old_quantity = old.quantity
+        old_buy_average = old.buy_average
+        old_status = old.status
+
+        old_investment = (
+            old_buy_average *
+            old_quantity
+        )
+
+        # -----------------------------
+        # Save edited holding
+        # -----------------------------
+        holding = serializer.save()
+
+        # -----------------------------
+        # Only OPEN holdings affect cash
+        # -----------------------------
+        if old_status != "OPEN" or holding.status != "OPEN":
+            return
+
+        new_investment = (
+            holding.buy_average *
+            holding.quantity
+        )
+
+        difference = new_investment - old_investment
+
+        if difference == 0:
+            return
+
+        # ---------------------------------------
+        # More investment -> BUY adjustment
+        # ---------------------------------------
+        if difference > 0:
+
+            CashTransaction.objects.create(
+
+                transaction_date=timezone.localdate(),
+
+                transaction_type="BUY",
+
+                amount=difference,
+
+                holding=holding,
+
+                remarks=f"Adjustment BUY - {holding.script_name}",
+
+            )
+
+        # ---------------------------------------
+        # Reduced investment -> SELL adjustment
+        # ---------------------------------------
+        else:
+
+            CashTransaction.objects.create(
+
+                transaction_date=timezone.localdate(),
+
+                transaction_type="SELL",
+
+                amount=abs(difference),
+
+                holding=holding,
+
+                remarks=f"Adjustment SELL - {holding.script_name}",
+
+            )
+
+        update_running_balance()
+
+
 # ==========================================================
 # COVERED CALLS
 # ==========================================================
