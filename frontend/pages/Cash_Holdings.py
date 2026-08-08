@@ -38,6 +38,8 @@ from components.tables import (
 
 from components.styles import load_css
 
+from components.cash.ledger import render_cash_ledger
+
 load_css()
 
 # =====================================================
@@ -234,6 +236,12 @@ st.divider()
 # =====================================================
 
 render_add_holding()
+
+# ============================================================
+# CASH BALANCE LEDGER
+# ============================================================
+
+render_cash_ledger()
 
 # =====================================================
 # OPEN / CLOSED HOLDINGS
