@@ -26,26 +26,51 @@ def render_edit_position(row):
 
         strike = st.number_input(
             "Strike",
-            value=float(row["strike"]),
+            value=float(
+                pd.to_numeric(
+                    row.get("strike", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
             format="%.2f",
         )
 
         sell_average = st.number_input(
             "Sell Average",
-            value=float(row["sell_average"]),
+            value=float(
+                pd.to_numeric(
+                    row.get("sell_average", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
             format="%.2f",
         )
 
         quantity = st.number_input(
             "Quantity",
-            value=int(row["quantity"]),
+            value=int(
+                pd.to_numeric(
+                    row.get("quantity", 1),
+                    errors="coerce",
+                )
+                or 1
+            ),
             min_value=1,
             step=1,
         )
 
-        charges = st.number_input(
-            "Charges",
-            value=float(row["charges"]),
+        opening_charges = st.number_input(
+            "Opening Charges",
+            min_value=0.0,
+            value=float(
+                pd.to_numeric(
+                    row.get("opening_charges", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
             format="%.2f",
         )
 
@@ -63,7 +88,7 @@ def render_edit_position(row):
             "strike": strike,
             "sell_average": sell_average,
             "quantity": quantity,
-            "charges": charges,
+            "opening_charges": opening_charges,
         },
     )
 
@@ -103,44 +128,97 @@ def render_edit_closed_position(row):
 
         strike = st.number_input(
             "Strike",
-            value=float(row["strike"]),
+            value=float(
+                pd.to_numeric(
+                    row.get("strike", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
             format="%.2f",
         )
 
         sell_average = st.number_input(
             "Sell Average",
-            value=float(row["sell_average"]),
+            value=float(
+                pd.to_numeric(
+                    row.get("sell_average", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
             format="%.2f",
         )
 
         buy_average = st.number_input(
             "Buy Average",
-            value=float(row["buy_average"]),
+            value=float(
+                pd.to_numeric(
+                    row.get("buy_average", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
             format="%.2f",
         )
 
         quantity = st.number_input(
             "Quantity",
-            value=int(row["quantity"]),
+            value=int(
+                pd.to_numeric(
+                    row.get("quantity", 1),
+                    errors="coerce",
+                )
+                or 1
+            ),
             min_value=1,
             step=1,
+        )
+
+        opening_charges = st.number_input(
+            "Opening Charges",
+            min_value=0.0,
+            value=float(
+                pd.to_numeric(
+                    row.get("opening_charges", 0),
+                    errors="coerce",
+                )
+                or 0
+            ),
+            format="%.2f",
         )
 
         closing_charges = st.number_input(
             "Closing Charges",
             min_value=0.0,
             value=float(
-                row.get("closing_charges", 0)
+                pd.to_numeric(
+                    row.get("closing_charges", 0),
+                    errors="coerce",
+                )
+                or 0
             ),
             format="%.2f",
         )
 
-        close_date = st.date_input(
-            "Close Date",
-            value=pd.to_datetime(
-                row["close_date"]
-            ).date(),
+        close_date_value = row.get(
+            "close_date"
         )
+
+        if close_date_value:
+
+            close_date = st.date_input(
+                "Close Date",
+                value=pd.to_datetime(
+                    close_date_value
+                ).date(),
+            )
+
+        else:
+
+            close_date = st.date_input(
+                "Close Date"
+            )
 
         save = st.form_submit_button(
             "Save Changes",
@@ -157,7 +235,8 @@ def render_edit_closed_position(row):
             "sell_average": sell_average,
             "buy_average": buy_average,
             "quantity": quantity,
-            "charges": closing_charges,
+            "opening_charges": opening_charges,
+            "closing_charges": closing_charges,
             "close_date": str(close_date),
         },
     )
