@@ -624,7 +624,9 @@ def portfolio_summary(cash_df, call_df):
     return summary
 
 # =====================================================
+
 # CASH HOLDINGS SUMMARY
+
 # =====================================================
 
 def cash_holding_summary(cash_df):
