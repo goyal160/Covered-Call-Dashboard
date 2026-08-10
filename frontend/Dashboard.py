@@ -41,7 +41,7 @@ load_css()
 # =====================================================
 
 st.set_page_config(
-    page_title="Covered Call Dashboard",
+    page_title="My Dashboard",
     page_icon="📈",
     layout="wide",
 )
@@ -106,7 +106,7 @@ if calls is None:
 # =====================================================
 
 summary = portfolio_summary(
-    open_cash,
+    cash,
     calls,
 )
 
@@ -447,11 +447,3 @@ else:
         closed_calls_table(closed)
 
 st.divider()
-
-# =====================================================
-# FOOTER
-# =====================================================
-
-st.caption(
-    "Covered Call Portfolio Management System | Phase 2 Dashboard"
-)
