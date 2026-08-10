@@ -412,43 +412,60 @@ def portfolio_summary(cash_df, call_df):
                 .sum() 
             ) 
 
-        # --------------------------------------------- 
-        # CASH POSITION CHARGES 
-        # --------------------------------------------- 
-         
-        # Include charges from both OPEN and CLOSED 
-        # cash positions because charges are real 
-        # portfolio costs. 
-        
-        cash_charges = ( 
+        # ---------------------------------------------
+        # CASH POSITION CHARGES
+        # ---------------------------------------------
 
-            cash["charges"] 
+        # Charges on OPEN positions still need to be deducted from their unrealized gain.
+        # CLOSED position charges must NOT be deducted
+        # again because realized_gain is already NET of
+        # charges in the backend model.
 
-            .sum() 
+        open_cash_charges = 0.0
 
-        ) 
+        if not open_cash.empty:
 
-        # --------------------------------------------- 
-        # EQUITY GAIN 
-        # --------------------------------------------- 
-         
-        equity_gain_before_charges = ( 
+            open_cash_charges = (
 
-            unrealized_gain 
+            open_cash["charges"]
 
-            + 
+            .sum()
 
-            realized_gain 
+        )
 
-        ) 
+        # Total cash charges for display/reporting.
+        # This includes both OPEN and CLOSED positions.
 
-        equity_gain = ( 
+        cash_charges = (
 
-            equity_gain_before_charges 
+            cash["charges"]
 
-            - 
+            .sum()
 
-            cash_charges 
+        )
+
+        # ---------------------------------------------
+        # EQUITY GAIN
+        # ---------------------------------------------
+
+        # OPEN:
+        #     gain_loss - charges
+        #
+        # CLOSED:
+        #     realized_gain
+        #     (already net of charges)
+
+        equity_gain = (
+
+            unrealized_gain
+
+            -
+
+            open_cash_charges
+
+            +
+
+            realized_gain
 
         ) 
 
