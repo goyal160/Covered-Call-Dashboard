@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+
 from components.sidebar import render_sidebar
 from components.login import render_login
 
@@ -15,17 +16,17 @@ from api import (
     is_logged_in,
     get_cash_holdings,
     get_covered_calls,
-    get_cash_transactions,
 )
 
 from components.tables import (
-    cash_holdings_table,
-    open_calls_table,
-    recent_activity_table,
-    closed_calls_table,
+    cash_holding_summary_table,
+    covered_call_summary_table,
 )
 
-from components.navigation import quick_navigation, section_header
+from components.navigation import (
+    quick_navigation,
+    section_header,
+)
 
 from services import (
     portfolio_summary,
@@ -34,7 +35,9 @@ from services import (
 
 from components.styles import load_css
 
+
 load_css()
+
 
 # =====================================================
 # PAGE CONFIGURATION
@@ -46,17 +49,28 @@ st.set_page_config(
     layout="wide",
 )
 
+
+# =====================================================
+# AUTHENTICATION
+# =====================================================
+
 if not is_logged_in():
 
     render_login()
 
     st.stop()
 
+
+# =====================================================
+# SIDEBAR
+# =====================================================
+
 render_sidebar(
     st.session_state["username"]
 )
 
-st.title("📈 Covered Call Portfolio Dashboard")
+
+st.title("📈 Portfolio Dashboard")
 
 st.markdown("--")
 
@@ -67,38 +81,43 @@ st.markdown("--")
 
 cash = get_cash_holdings()
 
-if cash is None:
-    cash = pd.DataFrame()
-
-if not cash.empty and "status" in cash.columns:
-
-    open_cash = cash[
-        cash["status"] == "OPEN"
-    ]
-
-    closed_cash = cash[
-        cash["status"] == "CLOSED"
-    ]
-
-else:
-
-    open_cash = cash.copy()
-
-    closed_cash = pd.DataFrame()
-
 calls = get_covered_calls()
 
-transactions = get_cash_transactions()
 
 # =====================================================
 # SAFETY
 # =====================================================
 
 if cash is None:
+
     cash = pd.DataFrame()
 
+
 if calls is None:
+
     calls = pd.DataFrame()
+
+
+# =====================================================
+# OPEN CASH HOLDINGS
+# =====================================================
+
+if (
+    not cash.empty
+    and
+    "status" in cash.columns
+):
+
+    open_cash = cash[
+        cash["status"]
+        .astype(str)
+        .str.upper()
+        == "OPEN"
+    ].copy()
+
+else:
+
+    open_cash = cash.copy()
 
 
 # =====================================================
@@ -112,13 +131,14 @@ summary = portfolio_summary(
 
 
 # =====================================================
-# ADDITIONAL KPI CALCULATIONS
+# ADDITIONAL DASHBOARD SUMMARY
 # =====================================================
 
 dashboard = dashboard_summary(
-    open_cash,
+    cash,
     calls,
 )
+
 
 # =====================================================
 # DASHBOARD OVERVIEW
@@ -129,6 +149,7 @@ left, right = st.columns(
     gap="small",
 )
 
+
 with left:
 
     dashboard_kpi_cards(
@@ -136,77 +157,11 @@ with left:
         dashboard,
     )
 
+
 with right:
 
-    # st.subheader("Portfolio Allocation")
-
-    portfolio_allocation_chart(open_cash)
-
-st.divider()
-
-
-# =====================================================
-# TOP PERFORMING HOLDINGS
-# =====================================================
-
-st.subheader("🏆 Top Performing Holdings")
-
-if cash.empty:
-
-    st.info("No Holdings Available.")
-
-else:
-
-    top = open_cash.copy()
-
-    top = top.sort_values(
-
-        by="gain_loss",
-
-        ascending=False
-
-    )
-
-    display = top[
-
-        [
-
-            "script_name",
-
-            "buy_average",
-
-            "current_price",
-
-            "quantity",
-
-            "gain_loss",
-
-        ]
-
-    ]
-
-    display.columns = [
-
-        "Script",
-
-        "Buy Avg",
-
-        "Current Price",
-
-        "Qty",
-
-        "Gain/Loss",
-
-    ]
-
-    st.dataframe(
-
-        display,
-
-        hide_index=True,
-
-        width="stretch"
-
+    portfolio_allocation_chart(
+        open_cash
     )
 
 
@@ -214,56 +169,71 @@ st.divider()
 
 
 # =====================================================
-# CASH BALANCE
+# CASH HOLDING SUMMARY
 # =====================================================
 
-st.subheader("💵 Portfolio Cash")
+st.subheader(
+    "💰 Cash Holding Summary"
+)
+
+cash_holding_summary_table(
+    cash
+)
+
+
+st.divider()
+
+
+# =====================================================
+# COVERED CALL SUMMARY
+# =====================================================
+
+st.subheader(
+    "📞 Covered Call Summary"
+)
+
+covered_call_summary_table(
+    calls
+)
+
+
+st.divider()
+
+
+# =====================================================
+# PORTFOLIO CASH
+# =====================================================
+
+st.subheader(
+    "💵 Portfolio Cash"
+)
+
 
 c1, c2, c3 = st.columns(3)
 
+
 with c1:
+
     st.metric(
         "Available Cash",
-        f"₹ {summary['cash_balance']:,.2f}"
+        f"₹ {summary['cash_balance']:,.2f}",
     )
+
 
 with c2:
+
     st.metric(
         "Total Deposits",
-        f"₹ {summary['cash_added']:,.2f}"
+        f"₹ {summary['cash_added']:,.2f}",
     )
+
 
 with c3:
+
     st.metric(
         "Total Withdrawals",
-        f"₹ {summary['cash_withdrawn']:,.2f}"
+        f"₹ {summary['cash_withdrawn']:,.2f}",
     )
-
-st.divider()
-
-
-# =====================================================
-# CASH HOLDINGS
-# =====================================================
-
-section_header(
-    "💰 Cash Holdings",
-    "pages/Cash_Holdings.py",
-    "➕ Add",
-    "➕",
-)
-
-if cash.empty:
-
-    st.info(
-
-        "No Cash Holdings Available."
-
-    )
-
-else:
-
-    cash_holdings_table(open_cash)
 
 
 st.divider()
@@ -275,175 +245,14 @@ st.divider()
 
 quick_navigation()
 
+
 st.divider()
 
+
 # =====================================================
-# OPEN COVERED CALLS
+# FOOTER
 # =====================================================
 
-section_header(
-    "📞 Open Covered Calls",
-    "pages/Covered_Calls.py",
-    "Manage",
-    "📞",
+st.caption(
+    "Covered Call Portfolio Management System | Phase 2 Dashboard"
 )
-
-if calls.empty:
-
-    st.info("No Covered Calls Available.")
-
-else:
-
-    open_calls_df = calls.copy()
-
-    if "status" in open_calls_df.columns:
-        open_calls_df = open_calls_df[
-            open_calls_df["status"] == "OPEN"
-        ]
-
-    if open_calls_df.empty:
-
-        st.info("No Open Covered Calls.")
-
-    else:
-
-        open_calls_table(open_calls_df)
-
-st.divider()
-
-# =====================================================
-# RECENT COVERED CALL ACTIVITY
-# =====================================================
-
-st.subheader("🕒 Recent Covered Call Activity")
-
-if calls.empty:
-
-    st.info("No Activity Available.")
-
-else:
-
-    recent = calls.copy()
-
-    if "trade_date" in recent.columns:
-
-        recent = recent.sort_values(
-            "trade_date",
-            ascending=False,
-        )
-
-    recent_activity_table(recent)
-
-st.divider()
-
-# =====================================================
-# EXPIRING CALLS
-# =====================================================
-
-st.subheader("📅 Calls Expiring Within 30 Days")
-
-if calls.empty:
-
-    st.info("No Covered Calls Available.")
-
-else:
-
-    if (
-        "expiry_date" in calls.columns
-        and
-        "status" in calls.columns
-    ):
-
-        expiry = calls.copy()
-
-        expiry = expiry[
-            expiry["status"] == "OPEN"
-        ]
-
-        expiry["expiry_date"] = pd.to_datetime(
-            expiry["expiry_date"],
-            errors="coerce",
-        )
-
-        today = pd.Timestamp.today().normalize()
-
-        future = today + pd.Timedelta(days=30)
-
-        expiry = expiry[
-            (
-                expiry["expiry_date"] >= today
-            )
-            &
-            (
-                expiry["expiry_date"] <= future
-            )
-        ]
-
-        if expiry.empty:
-
-            st.success(
-                "No Calls Expiring Within 30 Days."
-            )
-
-        else:
-
-            cols = [
-                "expiry_date",
-                "script_name",
-                "strike",
-                "quantity",
-                "sell_average",
-            ]
-
-            expiry = expiry[
-                [c for c in cols if c in expiry.columns]
-            ]
-
-            expiry.rename(
-                columns={
-                    "expiry_date": "Expiry",
-                    "script_name": "Script",
-                    "strike": "Strike",
-                    "quantity": "Qty",
-                    "sell_average": "Premium",
-                },
-                inplace=True,
-            )
-
-            st.dataframe(
-                expiry,
-                width="stretch",
-                hide_index=True,
-            )
-
-st.divider()
-
-# =====================================================
-# CLOSED COVERED CALLS
-# =====================================================
-
-st.subheader("✅ Closed Covered Calls")
-
-if calls.empty:
-
-    st.info("No Covered Calls Available.")
-
-else:
-
-    closed = calls.copy()
-
-    if "status" in closed.columns:
-
-        closed = closed[
-            closed["status"] == "CLOSED"
-        ]
-
-    if closed.empty:
-
-        st.info("No Closed Covered Calls.")
-
-    else:
-
-        closed_calls_table(closed)
-
-st.divider()

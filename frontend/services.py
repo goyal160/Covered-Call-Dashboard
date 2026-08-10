@@ -646,6 +646,194 @@ def portfolio_summary(cash_df, call_df):
 
 # =====================================================
 
+# =====================================================
+# DASHBOARD CASH HOLDING SUMMARY
+# =====================================================
+
+def dashboard_cash_holding_summary(cash_df):
+
+    columns = [
+        "script_name",
+        "status",
+        "realized_gain",
+    ]
+
+    if cash_df is None or cash_df.empty:
+        return pd.DataFrame(columns=columns)
+
+    cash = cash_df.copy()
+
+    # Ensure required columns exist
+    for col in columns:
+        if col not in cash.columns:
+            cash[col] = 0.0 if col == "realized_gain" else ""
+
+    # Numeric conversion
+    cash["realized_gain"] = pd.to_numeric(
+        cash["realized_gain"],
+        errors="coerce",
+    ).fillna(0.0)
+
+    # Normalize status
+    cash["status"] = (
+        cash["status"]
+        .astype(str)
+        .str.upper()
+    )
+
+    result = cash[
+        [
+            "script_name",
+            "status",
+            "realized_gain",
+        ]
+    ].copy()
+
+    result.rename(
+        columns={
+            "script_name": "Script Name",
+            "status": "Status",
+            "realized_gain": "Realized Profit",
+        },
+        inplace=True,
+    )
+
+    return result
+
+
+# =====================================================
+# DASHBOARD COVERED CALL SCRIPT SUMMARY
+# =====================================================
+
+def dashboard_covered_call_summary(call_df):
+
+    columns = [
+        "Sr. No.",
+        "Script Name",
+        "Realized Profit",
+        "Total Charges",
+    ]
+
+    if call_df is None or call_df.empty:
+        return pd.DataFrame(columns=columns)
+
+    calls = call_df.copy()
+
+    numeric_columns = [
+        "quantity",
+        "opening_charges",
+        "closing_charges",
+        "net_profit",
+    ]
+
+    for col in numeric_columns:
+
+        if col not in calls.columns:
+            calls[col] = 0.0
+
+        calls[col] = pd.to_numeric(
+            calls[col],
+            errors="coerce",
+        ).fillna(0.0)
+
+    if "script_name" not in calls.columns:
+        return pd.DataFrame(columns=columns)
+
+    if "status" in calls.columns:
+
+        calls["status"] = (
+            calls["status"]
+            .astype(str)
+            .str.upper()
+        )
+
+    else:
+
+        calls["status"] = "OPEN"
+
+    # -------------------------------------------------
+    # Realized profit
+    # -------------------------------------------------
+    #
+    # Only CLOSED calls contribute to realized profit.
+    #
+    # net_profit is already calculated by the backend
+    # after deducting opening and closing charges.
+    # -------------------------------------------------
+
+    calls["realized_profit"] = 0.0
+
+    closed_mask = calls["status"] == "CLOSED"
+
+    calls.loc[
+        closed_mask,
+        "realized_profit",
+    ] = calls.loc[
+        closed_mask,
+        "net_profit",
+    ]
+
+    # -------------------------------------------------
+    # Total charges
+    # -------------------------------------------------
+    #
+    # Include all charges incurred against calls
+    # belonging to the script.
+    # -------------------------------------------------
+
+    calls["total_charges"] = (
+        calls["opening_charges"]
+        +
+        calls["closing_charges"]
+    )
+
+    # -------------------------------------------------
+    # Group script-wise
+    # -------------------------------------------------
+
+    result = (
+        calls
+        .groupby(
+            "script_name",
+            as_index=False,
+        )
+        .agg(
+            {
+                "realized_profit": "sum",
+                "total_charges": "sum",
+            }
+        )
+    )
+
+    result.rename(
+        columns={
+            "script_name": "Script Name",
+            "realized_profit": "Realized Profit",
+            "total_charges": "Total Charges",
+        },
+        inplace=True,
+    )
+
+    # -------------------------------------------------
+    # Serial number
+    # -------------------------------------------------
+
+    result.insert(
+        0,
+        "Sr. No.",
+        range(1, len(result) + 1),
+    )
+
+    return result[
+        [
+            "Sr. No.",
+            "Script Name",
+            "Realized Profit",
+            "Total Charges",
+        ]
+    ]
+
+
 def cash_holding_summary(cash_df):
 
     summary = {

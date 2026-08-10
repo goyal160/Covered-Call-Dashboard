@@ -4,6 +4,25 @@ import pandas as pd
 
 def render_summary(open_df, closed_df):
 
+    # =====================================================
+    # SAFETY
+    # =====================================================
+
+    if open_df is None:
+        open_df = pd.DataFrame()
+
+    if closed_df is None:
+        closed_df = pd.DataFrame()
+
+    # Work on copies so the original API DataFrames
+    # are not modified.
+    open_df = open_df.copy()
+    closed_df = closed_df.copy()
+
+    # =====================================================
+    # NUMERIC COLUMNS
+    # =====================================================
+
     numeric_columns = [
         "sell_average",
         "buy_average",
@@ -16,97 +35,100 @@ def render_summary(open_df, closed_df):
     for col in numeric_columns:
 
         if col in open_df.columns:
+
             open_df[col] = pd.to_numeric(
                 open_df[col],
                 errors="coerce",
             ).fillna(0)
 
         if col in closed_df.columns:
+
             closed_df[col] = pd.to_numeric(
                 closed_df[col],
                 errors="coerce",
             ).fillna(0)
 
+    # =====================================================
+    # COUNTS
+    # =====================================================
+
     open_calls = len(open_df)
 
     closed_calls = len(closed_df)
 
+    # =====================================================
+    # OPEN CALL PREMIUM
+    # =====================================================
+
     premium_collected = 0.0
 
-    realized_profit = 0.0
+    required_open_columns = {
+        "sell_average",
+        "quantity",
+        "opening_charges",
+    }
 
-    # ----------------------------------------
-    # Premium Collected
-    # ----------------------------------------
-
-    if not open_df.empty:
+    if (
+        not open_df.empty
+        and required_open_columns.issubset(open_df.columns)
+    ):
 
         premium_collected = (
+
             (
                 open_df["sell_average"]
                 * open_df["quantity"]
             )
+
             - open_df["opening_charges"]
+
         ).sum()
 
-    # ----------------------------------------
-    # Realized Profit
-    # ----------------------------------------
+    # =====================================================
+    # CLOSED CALL REALIZED PROFIT
+    # =====================================================
+
+    realized_profit = 0.0
 
     if (
-
         not closed_df.empty
-
-        and
-
-        "net_profit" in closed_df.columns
-
+        and "net_profit" in closed_df.columns
     ):
 
         realized_profit = (
-
-            closed_df["net_profit"]
-
-            .fillna(0)
-
-            .sum()
-
+            closed_df["net_profit"].sum()
         )
 
-    # ----------------------------------------
+    # =====================================================
     # KPI CARDS
-    # ----------------------------------------
+    # =====================================================
 
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric(
+    with c1:
 
-        "Open Calls",
+        st.metric(
+            "Open Calls",
+            open_calls,
+        )
 
-        open_calls,
+    with c2:
 
-    )
+        st.metric(
+            "Closed Calls",
+            closed_calls,
+        )
 
-    c2.metric(
+    with c3:
 
-        "Closed Calls",
+        st.metric(
+            "Premium Collected",
+            f"₹ {premium_collected:,.2f}",
+        )
 
-        closed_calls,
+    with c4:
 
-    )
-
-    c3.metric(
-
-        "Premium Collected",
-
-        f"₹ {premium_collected:,.2f}",
-
-    )
-
-    c4.metric(
-
-        "Realized Profit",
-
-        f"₹ {realized_profit:,.2f}",
-
-    )
+        st.metric(
+            "Realized Profit",
+            f"₹ {realized_profit:,.2f}",
+        )

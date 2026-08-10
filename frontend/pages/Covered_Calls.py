@@ -9,6 +9,11 @@ from components.covered_calls.filters import filter_open_calls
 from components.covered_calls.open_card import render_open_card
 from components.covered_calls.closed_card import render_closed_card
 
+from components.tables import (
+    recent_activity_table,
+    closed_calls_table,
+)
+
 from api import (
     get_open_calls,
     get_closed_calls,
@@ -18,7 +23,9 @@ from api import (
 
 from components.styles import load_css
 
+
 load_css()
+
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -30,6 +37,7 @@ st.set_page_config(
     layout="wide",
 )
 
+
 # =====================================================
 # AUTHENTICATION
 # =====================================================
@@ -37,14 +45,13 @@ st.set_page_config(
 if not is_logged_in():
 
     st.warning(
-
         "Please login from Dashboard."
-
     )
 
     st.switch_page("Dashboard.py")
 
     st.stop()
+
 
 # =====================================================
 # SIDEBAR
@@ -55,21 +62,26 @@ render_sidebar(
     show_dashboard=True,
 )
 
+
 st.title("📞 Covered Calls")
+
 
 # ============================================================
 # LOAD DATA
 # ============================================================
 
 @st.cache_data(ttl=5)
-def load_data(): 
+def load_data():
+
     return (
         get_open_calls(),
         get_closed_calls(),
         get_cash_holdings(),
     )
 
+
 open_df, closed_df, holdings = load_data()
+
 
 # ============================================================
 # ENSURE DATAFRAMES
@@ -86,13 +98,38 @@ if holdings is None:
 
 
 # ============================================================
-# CALCULATE KPI VALUES
+# COMBINED CALL DATA
+# ============================================================
+
+if not open_df.empty and not closed_df.empty:
+
+    all_calls = pd.concat(
+        [open_df, closed_df],
+        ignore_index=True,
+    )
+
+elif not open_df.empty:
+
+    all_calls = open_df.copy()
+
+elif not closed_df.empty:
+
+    all_calls = closed_df.copy()
+
+else:
+
+    all_calls = pd.DataFrame()
+
+
+# ============================================================
+# COVERED CALL SUMMARY
 # ============================================================
 
 render_summary(
     open_df,
     closed_df,
 )
+
 
 st.divider()
 
@@ -105,11 +142,58 @@ render_add_form(
     holdings,
 )
 
+
+st.divider()
+
+
+# ============================================================
+# RECENT COVERED CALL ACTIVITY
+# ============================================================
+
+st.subheader("🕒 Recent Covered Call Activity")
+
+
+if all_calls.empty:
+
+    st.info(
+        "No Covered Call Activity Available."
+    )
+
+else:
+
+    recent = all_calls.copy()
+
+    if "trade_date" in recent.columns:
+
+        recent["trade_date"] = pd.to_datetime(
+            recent["trade_date"],
+            errors="coerce",
+        )
+
+        recent = recent.sort_values(
+            "trade_date",
+            ascending=False,
+        )
+
+    # Only the latest 3 entries
+    recent = recent.head(3)
+
+    recent_activity_table(
+        recent,
+    )
+
+
+st.divider()
+
+
 # ============================================================
 # FILTER OPEN POSITIONS
 # ============================================================
 
-display_open = filter_open_calls(open_df)
+display_open = filter_open_calls(
+    open_df,
+)
+
 
 # ============================================================
 # TABS
@@ -122,6 +206,7 @@ tab_open, tab_closed = st.tabs(
     ]
 )
 
+
 # ============================================================
 # OPEN POSITIONS
 # ============================================================
@@ -130,15 +215,20 @@ with tab_open:
 
     if display_open.empty:
 
-        st.info("No Open Covered Call Positions.")
+        st.info(
+            "No Open Covered Call Positions."
+        )
 
     else:
 
-        st.subheader("Open Covered Calls")
+        st.subheader(
+            "Open Covered Calls"
+        )
 
         for _, row in display_open.iterrows():
 
             render_open_card(row)
+
 
 # ============================================================
 # CLOSED POSITIONS
@@ -148,12 +238,55 @@ with tab_closed:
 
     if closed_df.empty:
 
-        st.info("No Closed Positions.")
+        st.info(
+            "No Closed Positions."
+        )
 
     else:
 
-        st.subheader("Closed Covered Calls")
+        st.subheader(
+            "Closed Covered Calls"
+        )
 
         for _, row in closed_df.iterrows():
 
             render_closed_card(row)
+
+
+st.divider()
+
+
+# ============================================================
+# CLOSED COVERED CALL TABLE
+# ============================================================
+
+st.subheader(
+    "📋 Closed Covered Call Summary"
+)
+
+
+if closed_df.empty:
+
+    st.info(
+        "No Closed Covered Calls Available."
+    )
+
+else:
+
+    closed_table = closed_df.copy()
+
+    if "close_date" in closed_table.columns:
+
+        closed_table["close_date"] = pd.to_datetime(
+            closed_table["close_date"],
+            errors="coerce",
+        )
+
+        closed_table = closed_table.sort_values(
+            "close_date",
+            ascending=False,
+        )
+
+    closed_calls_table(
+        closed_table,
+    )
