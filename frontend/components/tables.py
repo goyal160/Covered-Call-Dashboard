@@ -1,4 +1,3 @@
-from django.contrib.admin import display
 import streamlit as st
 import pandas as pd
 
