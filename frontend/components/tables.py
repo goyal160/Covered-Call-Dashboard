@@ -1,3 +1,4 @@
+from django.contrib.admin import display
 import streamlit as st
 import pandas as pd
 
@@ -755,3 +756,112 @@ def covered_call_summary_table(df):
         hide_index=True,
         width="stretch",
     )
+
+# =====================================================
+# DIVIDEND SUMMARY
+# =====================================================
+
+def dividend_summary_table(dividend_df):
+
+    columns = [
+        "Sr. No.",
+        "Script Name",
+        "Dividend Date",
+        "Dividend Income",
+    ]    
+
+    if dividend_df is None or dividend_df.empty:
+
+        return pd.DataFrame(columns=columns)
+
+    dividends = dividend_df.copy()
+
+    # -------------------------------------------------
+    # Numeric conversion
+    # -------------------------------------------------
+
+    if "amount" not in dividends.columns:
+
+        dividends["amount"] = 0.0
+
+    dividends["amount"] = pd.to_numeric(
+        dividends["amount"],
+        errors="coerce",
+    ).fillna(0)
+
+    # -------------------------------------------------
+    # Script name
+    # -------------------------------------------------
+
+    if "holding_name" in dividends.columns:
+
+        dividends["Script Name"] = (
+            dividends["holding_name"]
+        )
+
+    elif "script_name" not in dividends.columns:
+
+        dividends["Script Name"] = ""
+
+    # -------------------------------------------------
+    # Dividend date
+    # -------------------------------------------------
+
+    if "dividend_date" not in dividends.columns:
+
+        dividends["dividend_date"] = ""
+
+    # -------------------------------------------------
+    # Create result
+    # -------------------------------------------------
+
+    result = dividends[
+        [
+            "script_name",
+            "dividend_date",
+            "amount",
+        ]
+    ].copy()
+
+    result.rename(
+        columns={
+            "script_name": "Script Name",
+            "dividend_date": "Dividend Date",
+            "amount": "Dividend Income",
+        },
+        inplace=True,
+    )
+
+    # -------------------------------------------------
+    # Sort latest dividend first
+    # -------------------------------------------------
+
+    result.sort_values(
+        by="Dividend Date",
+        ascending=False,
+        inplace=True,
+    )
+
+    result.reset_index(
+        drop=True,
+        inplace=True,
+    )
+
+    # -------------------------------------------------
+    # Serial number
+    # -------------------------------------------------
+
+    result.insert(
+        0,
+        "Sr. No.",
+        range(1, len(result) + 1),
+    )
+
+    return result[
+        [
+            "Sr. No.",
+            "Script Name",
+            "Dividend Date",
+            "Dividend Income",
+        ]
+    ]

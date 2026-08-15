@@ -384,6 +384,53 @@ def delete_covered_call(pk):
 
 
 # ==========================================================
+# DIVIDENDS
+# ==========================================================
+
+def get_dividends():
+    return get_dataframe("dividends/")
+
+
+def get_dividend(pk):
+    return request(
+        "GET",
+        f"dividends/{pk}/",
+    )
+
+
+def create_dividend(data):
+    return request(
+        "POST",
+        "dividends/",
+        payload=data,
+    )
+
+
+def patch_dividend(pk, data):
+
+    return request(
+        "PATCH",
+        f"dividends/{pk}/",
+        payload=data,
+    )
+
+
+def update_dividend(pk, data):
+
+    return patch_dividend(pk, data)
+
+
+def delete_dividend(pk):
+
+    request(
+        "DELETE",
+        f"dividends/{pk}/",
+    )
+
+    return True
+
+
+# ==========================================================
 # AUTH HELPERS
 # ==========================================================
 

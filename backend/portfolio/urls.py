@@ -5,11 +5,18 @@ from .views import (
     CashHoldingViewSet,
     CoveredCallViewSet,
     CashTransactionViewSet,
+    DividendViewSet,
     login_view,
     logout_view,
 )
 
+
 router = DefaultRouter()
+
+
+# ==========================================================
+# CASH HOLDINGS
+# ==========================================================
 
 router.register(
     "cash-holdings",
@@ -17,11 +24,32 @@ router.register(
     basename="cash-holdings",
 )
 
+
+# ==========================================================
+# COVERED CALLS
+# ==========================================================
+
 router.register(
     "covered-calls",
     CoveredCallViewSet,
     basename="covered-calls",
 )
+
+
+# ==========================================================
+# DIVIDENDS
+# ==========================================================
+
+router.register(
+    "dividends",
+    DividendViewSet,
+    basename="dividends",
+)
+
+
+# ==========================================================
+# CASH TRANSACTIONS
+# ==========================================================
 
 router.register(
     "cash-transactions",
@@ -29,11 +57,12 @@ router.register(
     basename="cash-transactions",
 )
 
+
 urlpatterns = [
 
-    # =====================================================
-    # Authentication
-    # =====================================================
+    # ======================================================
+    # AUTHENTICATION
+    # ======================================================
 
     path(
         "auth/login/",
@@ -47,13 +76,12 @@ urlpatterns = [
         name="logout",
     ),
 
-    # =====================================================
+    # ======================================================
     # API
-    # =====================================================
+    # ======================================================
 
     path(
         "",
         include(router.urls),
     ),
-
 ]

@@ -1,6 +1,7 @@
 import streamlit as st
 from utils import money, percent
 
+
 # =====================================================
 # GENERIC KPI CARD
 # =====================================================
@@ -97,8 +98,8 @@ def dashboard_kpi_cards(summary, dashboard):
 
     with c2:
         metric(
-            "Total Charges",
-            money(dashboard["total_charges"]),
+            "Dividend Income",
+            money(summary.get("dividend_income", 0)),
         )
 
     # ------------------------------------
@@ -109,11 +110,23 @@ def dashboard_kpi_cards(summary, dashboard):
 
     with c1:
         metric(
+            "Total Charges",
+            money(dashboard["total_charges"]),
+        )
+
+    with c2:
+        metric(
             "Net Portfolio P/L",
             money(summary["net_portfolio_pl"]),
         )
 
-    with c2:
+    # ------------------------------------
+    # Row 6
+    # ------------------------------------
+
+    c1, c2 = st.columns(2)
+
+    with c1:
         metric(
             "XIRR",
             percent(summary.get("xirr", 0)),

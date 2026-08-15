@@ -23,12 +23,14 @@ from .models import (
     CashHolding,
     CoveredCall,
     CashTransaction,
+    Dividend,
 )
 
 from .serializers import (
     CashHoldingSerializer,
     CoveredCallSerializer,
     CashTransactionSerializer,
+    DividendSerializer,
 )
 
 
@@ -110,6 +112,7 @@ def update_running_balance():
             "DEPOSIT",
             "SELL",
             "PREMIUM",
+            "DIVIDEND",
         ):
 
             balance += tx.amount
@@ -454,6 +457,133 @@ class CoveredCallViewSet(viewsets.ModelViewSet):
             )
 
             update_running_balance()
+
+
+# ==========================================================
+# DIVIDENDS
+# ==========================================================
+
+class DividendViewSet(viewsets.ModelViewSet):
+
+    authentication_classes = [
+        TokenAuthentication
+    ]
+
+    permission_classes = [
+        IsAuthenticated
+    ]
+
+    serializer_class = DividendSerializer
+
+    queryset = Dividend.objects.all().order_by(
+        "-dividend_date",
+        "-id",
+    )
+
+    def get_queryset(self):
+
+        queryset = Dividend.objects.all().order_by(
+            "-dividend_date",
+            "-id",
+        )
+
+        holding = self.request.query_params.get(
+            "holding"
+        )
+
+        if holding:
+
+            queryset = queryset.filter(
+                holding__script_name=holding
+            )
+
+        return queryset
+
+    def perform_create(self, serializer):
+
+        dividend = serializer.save()
+
+        CashTransaction.objects.create(
+
+            transaction_date=dividend.dividend_date,
+
+            transaction_type="DIVIDEND",
+
+            amount=dividend.amount,
+
+            holding=dividend.holding,
+
+            remarks=(
+                f"Dividend received - "
+                f"{dividend.holding.script_name}"
+            ),
+
+        )
+
+        update_running_balance()
+
+    def perform_update(self, serializer):
+
+        old = self.get_object()
+
+        old_amount = old.amount
+        old_date = old.dividend_date
+        old_holding = old.holding
+
+        dividend = serializer.save()
+
+        # --------------------------------------------------
+        # Update corresponding cash transaction
+        # --------------------------------------------------
+
+        transaction = CashTransaction.objects.filter(
+            transaction_type="DIVIDEND",
+            holding=old_holding,
+            transaction_date=old_date,
+            amount=old_amount,
+            remarks__startswith="Dividend received -",
+        ).order_by("-id").first()
+
+        if transaction:
+
+            transaction.transaction_date = (
+                dividend.dividend_date
+            )
+
+            transaction.amount = dividend.amount
+
+            transaction.holding = dividend.holding
+
+            transaction.remarks = (
+                f"Dividend received - "
+                f"{dividend.holding.script_name}"
+            )
+
+            transaction.save()
+
+        update_running_balance()
+
+    def perform_destroy(self, instance):
+
+        # --------------------------------------------------
+        # Remove corresponding cash transaction
+        # --------------------------------------------------
+
+        transaction = CashTransaction.objects.filter(
+            transaction_type="DIVIDEND",
+            holding=instance.holding,
+            transaction_date=instance.dividend_date,
+            amount=instance.amount,
+            remarks__startswith="Dividend received -",
+        ).order_by("-id").first()
+
+        if transaction:
+            transaction.delete()
+
+        instance.delete()
+
+        update_running_balance()
+
 
 # ==========================================================
 # PORTFOLIO CASH VIEW

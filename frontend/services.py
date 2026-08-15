@@ -1,7 +1,9 @@
 import pandas as pd
 from datetime import date
 from pyxirr import xirr
-from api import get_cash_transactions
+from api import (
+    get_cash_transactions,
+)
 
 
 # =====================================================
@@ -291,7 +293,11 @@ def dashboard_summary(cash_df, calls_df):
 # PORTFOLIO SUMMARY
 # =====================================================
 
-def portfolio_summary(cash_df, call_df): 
+def portfolio_summary(
+        cash_df, 
+        call_df, 
+        dividend_df=None,
+): 
 
     summary = { 
 
@@ -301,7 +307,8 @@ def portfolio_summary(cash_df, call_df):
         "cash_charges": 0.0, 
         "option_profit": 0.0, 
         "option_charges": 0.0, 
-        "premium_collected": 0.0, 
+        "premium_collected": 0.0,
+        "dividend_income": 0.0, 
         "total_charges": 0.0, 
         "net_portfolio_pl": 0.0, 
         "cash_balance": 0.0, 
@@ -323,7 +330,12 @@ def portfolio_summary(cash_df, call_df):
         cash = cash_df.copy() 
 
         numeric_columns = [ 
-            "buy_average", "current_price", "quantity", "gain_loss", "realized_gain", "charges", 
+            "buy_average", 
+            "current_price", 
+            "quantity", 
+            "gain_loss", 
+            "realized_gain", 
+            "charges", 
         ] 
 
         for col in numeric_columns: 
@@ -556,6 +568,33 @@ def portfolio_summary(cash_df, call_df):
     summary["option_charges"] = float( option_charges ) 
     summary["premium_collected"] = float( premium_collected ) 
 
+    # =================================================
+    # DIVIDEND INCOME
+    # =================================================
+
+    dividend_income = 0.0
+
+    if (
+        dividend_df is not None
+        and not dividend_df.empty
+        and "amount" in dividend_df.columns
+    ):
+
+        dividend_income = (
+
+            pd.to_numeric(
+                dividend_df["amount"],
+                errors="coerce",
+            )
+            .fillna(0)
+            .sum()
+
+        )
+
+    summary["dividend_income"] = float(
+        dividend_income
+    )
+
     # ================================================= 
     # TOTAL CHARGES 
     # ================================================= 
@@ -590,54 +629,53 @@ def portfolio_summary(cash_df, call_df):
     summary["net_portfolio_pl"] = ( 
 
         summary["equity_gain"] 
-
-        + 
-
-        summary["option_profit"] 
-
-        + 
-
-        summary["premium_collected"] 
+        + summary["option_profit"] 
+        + summary["premium_collected"]
+        + summary["dividend_income"]
     ) 
 
     # ================================================= 
     # CURRENT PORTFOLIO VALUE 
     # ================================================= 
     
-    current_portfolio_value = ( summary["cash_balance"] + summary["current_value"] + summary["premium_collected"] ) 
+    current_portfolio_value = ( 
+        summary["cash_balance"] 
+        + summary["current_value"] 
+        + summary["premium_collected"]
+    ) 
 
     # ================================================= 
     # ROI 
     # ================================================= 
     
     if summary["cash_added"] != 0: 
+
         summary["roi"] = round( 
             ( 
                 summary["net_portfolio_pl"] 
-
-                / 
-
-                summary["cash_added"] 
-
-            ) 
-
-            * 
-
-            100, 
-
+                / summary["cash_added"]
+            ) * 100, 
             2, 
-
             ) 
 
-    else: summary["roi"] = 0.0 
+    else: 
+
+        summary["roi"] = 0.0 
 
     # ================================================= 
     # XIRR 
     # ================================================= 
+    
     if summary["cash_added"] != 0:
-        summary["xirr"] = calculate_xirr( current_portfolio_value )
+
+        summary["xirr"] = calculate_xirr( 
+            current_portfolio_value 
+        )
+
     else:
+
         summary["xirr"] = 0.0
+        
     return summary
 
 # =====================================================

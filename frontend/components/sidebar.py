@@ -22,11 +22,19 @@ def render_sidebar(
 
     with st.sidebar:
 
+        # =====================================================
+        # USER
+        # =====================================================
+
         st.success(
             f"Logged in as\n\n**{username}**"
         )
 
         st.divider()
+
+        # =====================================================
+        # DASHBOARD
+        # =====================================================
 
         if show_dashboard:
 
@@ -34,15 +42,37 @@ def render_sidebar(
                 "🏠 Dashboard",
                 width="stretch",
             ):
-
                 st.switch_page(
                     "Dashboard.py"
                 )
+
+        # =====================================================
+        # DIVIDENDS
+        # =====================================================
+
+        st.subheader("💰 Dividends")
+
+        if st.button(
+            "📋 Dividend Management",
+            width="stretch",
+        ):
+            st.switch_page(
+                "pages/Dividends.py"
+            )
+
+        st.caption(
+            "Add, view and delete dividend income"
+        )
+
+        st.divider()
+
+        # =====================================================
+        # LOGOUT
+        # =====================================================
 
         if st.button(
             "🚪 Logout",
             width="stretch",
         ):
-
             logout()
             st.rerun()

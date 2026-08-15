@@ -42,8 +42,11 @@ frontend/
         cash/
             add_form.py
             allocation_chart.py
+            cash_transaction_form.py
+            close_holding.py
             export_buttons.py
             holding_cards.py
+            ledger.py
             summary.py
 
         covered_calls/
@@ -55,6 +58,12 @@ frontend/
             filters.py
             open_card.py
             summary.py
+
+        dividends/
+            add_form.py
+            summary.py
+            delete_dividend.py
+            edit_dividend.py
 
     pages/
         Cash_Holdings.py

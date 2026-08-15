@@ -4,6 +4,7 @@ from .models import (
     CashHolding,
     CoveredCall,
     CashTransaction,
+    Dividend,
 )
 
 
@@ -71,6 +72,33 @@ class CoveredCallSerializer(serializers.ModelSerializer):
             "holding_name",
         ]
 
+
+class DividendSerializer(serializers.ModelSerializer):
+
+    holding_name = serializers.CharField(
+        source="holding.script_name",
+        read_only=True,
+    )
+
+    class Meta:
+
+        model = Dividend
+
+        fields = [
+            "id",
+            "holding",
+            "holding_name",
+            "dividend_date",
+            "amount",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "holding_name",
+            "created_at",
+            "updated_at",
+        ]
 
 class CashTransactionSerializer(serializers.ModelSerializer):
 

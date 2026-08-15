@@ -199,6 +199,52 @@ class CoveredCall(models.Model):
         )
 
 
+class Dividend(models.Model):
+
+    holding = models.ForeignKey(
+        CashHolding,
+        on_delete=models.CASCADE,
+        related_name="dividends",
+    )
+
+    dividend_date = models.DateField(
+        default=timezone.localdate,
+    )
+
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-dividend_date",
+            "holding__script_name",
+        ]
+
+        indexes = [
+            models.Index(
+                fields=["dividend_date"]
+            ),
+        ]
+
+    def __str__(self):
+
+        return (
+            f"{self.holding.script_name} | "
+            f"{self.dividend_date} | "
+            f"₹{self.amount}"
+        )
+
+
 class CashTransaction(models.Model):
 
     TRANSACTION_TYPES = [
@@ -212,6 +258,8 @@ class CashTransaction(models.Model):
 
         ("PREMIUM", "Option Premium"),
         ("BUYBACK", "Option Buyback"),
+
+        ("DIVIDEND", "Dividend Income"),
 
         ("ADJUSTMENT", "Adjustment"),
     ]

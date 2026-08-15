@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import date
 import pandas as pd
 
 from components.sidebar import render_sidebar
@@ -16,6 +17,7 @@ from api import (
     is_logged_in,
     get_cash_holdings,
     get_covered_calls,
+    get_dividends,
 )
 
 from components.tables import (
@@ -83,6 +85,8 @@ cash = get_cash_holdings()
 
 calls = get_covered_calls()
 
+dividends = get_dividends()
+
 
 # =====================================================
 # SAFETY
@@ -96,6 +100,11 @@ if cash is None:
 if calls is None:
 
     calls = pd.DataFrame()
+
+
+if dividends is None:
+
+    dividends = pd.DataFrame()
 
 
 # =====================================================
@@ -127,6 +136,7 @@ else:
 summary = portfolio_summary(
     cash,
     calls,
+    dividends,
 )
 
 
@@ -194,6 +204,23 @@ st.subheader(
 
 covered_call_summary_table(
     calls
+)
+
+
+st.divider()
+
+
+# =====================================================
+# DIVIDEND INCOME
+# =====================================================
+
+st.subheader(
+    "💵 Dividend Income"
+)
+
+st.metric(
+    "Total Dividend Income",
+    f"₹ {summary['dividend_income']:,.2f}",
 )
 
 
